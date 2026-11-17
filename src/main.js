@@ -752,7 +752,7 @@ function animate(){
     playerCar.position.copy(candidate);
    }
    if(collision){
-    driveSpeed*=-.12;
+    driveSpeed=0; // A blocked vehicle stops instead of bouncing through the obstacle.
     if(crashCooldown<=0){
      playImpact();
      const pedestrian=collision==='pedestrian';
@@ -794,7 +794,27 @@ function animate(){
  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
  animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
- ambientNPCs.forEach((npc,i)=>{animateNpc(npc);const distance=npc.root.position.distanceTo(player.position);if(distance<7){npc.root.rotation.y=Math.atan2(player.position.x-npc.root.position.x,player.position.z-npc.root.position.z);npc.legs.forEach(leg=>leg.rotation.x=0);return;}const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;npc.root.position.x=npc.home.x+Math.sin(t)*2.1;npc.root.position.z=npc.home.z+Math.cos(t)*1.15;if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;}});
+ ambientNPCs.forEach((npc,i)=>{
+   animateNpc(npc);
+   const carDistance=Math.hypot(npc.root.position.x-playerCar.position.x,npc.root.position.z-playerCar.position.z);
+   if(driving&&Math.abs(driveSpeed)>1.8&&carDistance<8.5){
+    let awayX=npc.root.position.x-playerCar.position.x,awayZ=npc.root.position.z-playerCar.position.z;
+    const length=Math.hypot(awayX,awayZ)||1;awayX/=length;awayZ/=length;
+    npc.root.position.x+=awayX*3.2*dt;npc.root.position.z+=awayZ*3.2*dt;
+    npc.home.x+=awayX*3.2*dt;npc.home.z+=awayZ*3.2*dt;
+    npc.root.rotation.y=Math.atan2(awayX,awayZ);
+    const run=Math.sin(animTime*.025)*.42;npc.legs[0].rotation.x=run;npc.legs[1].rotation.x=-run;
+    continue;
+   }
+   const distance=npc.root.position.distanceTo(player.position);
+   if(distance<7){npc.root.rotation.y=Math.atan2(player.position.x-npc.root.position.x,player.position.z-npc.root.position.z);npc.legs.forEach(leg=>leg.rotation.x=0);return;}
+   const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;
+   npc.root.position.x=npc.home.x+Math.sin(t)*2.1;npc.root.position.z=npc.home.z+Math.cos(t)*1.15;
+   if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){
+    npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);
+    const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;
+   }
+  });
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  const camDist=driving?15:10.5;
