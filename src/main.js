@@ -144,6 +144,8 @@ function car(x,z,color,rotation=0){
  const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=rotation; scene.add(g);
  box(g,0,.8,0,2.5,1.2,5,mat(color));
  box(g,0,1.55,-.1,1.9,.8,2.8,materials.glass);
+ box(g,0,.45,2.52,2.25,.22,.16,materials.dark);box(g,0,.45,-2.52,2.25,.22,.16,materials.dark);
+ for(const side of [-1,1]){box(g,side*.92,.88,2.48,.42,.2,.1,materials.yellow);box(g,side*.92,.88,-2.48,.42,.2,.1,materials.red);box(g,side*1.22,1.52,.1,.28,.18,.38,materials.dark);}
  for(let wx of [-1.25,1.25]) for(let wz of [-1.65,1.65]){
   const w=cylinder(g,wx,.48,wz,.48,.48,.28,materials.dark,12); w.rotation.z=Math.PI/2;
  }
@@ -211,6 +213,7 @@ beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
 const beaconArrow=new THREE.Mesh(new THREE.ConeGeometry(.42,1.15,8),new THREE.MeshBasicMaterial({color:0xe1c477}));
 beaconArrow.position.y=-1.15;beaconArrow.rotation.x=Math.PI;objectiveBeacon.add(beaconArrow);scene.add(objectiveBeacon);
 function updateObjectiveBeacon(time){const target=currentObjective();objectiveBeacon.visible=!!target;if(target){objectiveBeacon.position.set(target.pos.x,7.8+Math.sin(time*.002)*.3,target.pos.z);objectiveBeacon.rotation.y=time*.00045;}}
+function updateObjectiveDistance(){const target=currentObjective();const el=$('objective-distance');if(el)el.textContent=target?'TARGET DISTANCE · '+Math.round(player.position.distanceTo(target.pos))+' M':'FREE ROAM · EXPLORE ALBUQUERQUE';}
 function updateHealthUI(){ /* Health remains a gameplay mechanic; visual health bars are intentionally removed. */ }
 function damagePlayer(amount,reason='You were hurt.'){
  health=Math.max(0,health-amount);updateHealthUI();saveGame();showToast(reason+' Health -'+amount+'.');
@@ -311,7 +314,7 @@ function updateActive(){
  if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
  if(player.position.distanceTo(locations[3].pos)<35)zone='GAS STATION';
  if(player.position.distanceTo(locations[4].pos)<24)zone='POLICE PATROL';
- $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';drawMiniMap();
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';updateObjectiveDistance();drawMiniMap();
 }
 function drawMiniMap(){
  const canvas=$('minimap');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.48;
