@@ -1,11 +1,27 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#101511"><meta name="description" content="An unofficial 3D fan game inspired by Breaking Bad."><title>BREAKING BAD — The Cookhouse</title></head>
-<body><main id="app"><div id="loading"><b>ABQ</b><span>ENTERING THE RV</span></div>
-<section id="select"><div class="kicker">ALBUQUERQUE · 2008</div><h1>THE COOKHOUSE</h1><p>Choose who takes the lead.</p><div class="choices"><button id="pick-walt"><strong>HEISENBERG</strong><small>WALTER WHITE</small><span>Precision · Better batch value</span></button><button id="pick-jesse"><strong>JESSE PINKMAN</strong><small>THE PARTNER</small><span>Fast hands · Faster supply handling</span></button></div></section>
-<div id="hud"><header><div class="brand">THE COOKHOUSE <small>RV · NEW MEXICO</small></div><div class="stats"><span id="cash">$0</span><span id="heat">HEAT 0</span></div></header>
-<div class="objective"><small>TONIGHT'S JOB</small><b id="objective">Get the sealed supplies</b><span id="objective-sub">Move around the RV. Walk up to a station and press E.</span></div>
-<div class="inventory"><span id="supplies">SUPPLIES 0 / 3</span><span id="batch">BATCH 0</span><span id="partner">PARTNER: JESSE</span></div>
-<div id="prompt"><kbd>E</kbd><span id="prompt-text">INTERACT</span></div><div id="toast"></div>
-<div class="controls"><span>W A S D · MOVE</span><span>E · INTERACT</span><span>DRAG · LOOK</span></div>
-<div class="mobile"><div class="pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyS">▼</button><button data-key="KeyD">▶</button></div></div><button id="touch-e">E</button></div>
-<div id="dialog" class="hidden"><div class="dialog-card"><small id="dialog-who">JESSE</small><p id="dialog-text"></p><button id="dialog-ok">GOT IT</button></div></div></div></main><script type="module" src="/src/main.js"></script></body></html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#101411" />
+    <meta name="description" content="An unofficial, original 3D crime-drama sandbox inspired by the world of Breaking Bad." />
+    <title>BREAKING BAD — Albuquerque Stories</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="loading"><div class="loader-mark">ABQ</div><div>ENTERING ALBUQUERQUE</div></div>
+      <div id="hud">
+        <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter">CHAPTER 01 <span>·</span> THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong><small id="stats">TRUST 50 · HEAT 8</small></div></header>
+        <section class="mission"><div class="eyebrow">CURRENT OBJECTIVE</div><h1 id="mission-title">A DIFFERENT KIND OF FUTURE</h1><p id="mission-copy">Head to the car wash. Someone is waiting to talk.</p><div class="objective-progress"><i></i></div></section>
+        <div class="location" id="location">RESIDENTIAL DISTRICT <span>·</span> ALBUQUERQUE, NM</div>
+        <div class="interaction" id="interaction"><kbd>E</kbd><span id="interaction-copy">INTERACT</span></div>
+        <div class="toast" id="toast"></div>
+        <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> MOVE</span><span><kbd>SHIFT</kbd> WALK FASTER</span><span><kbd>E</kbd> INTERACT</span><span><kbd>DRAG</kbd> LOOK</span></div>
+        <div class="mobile-controls"><button id="mobile-forward">▲</button><button id="mobile-left">◀</button><button id="mobile-back">▼</button><button id="mobile-right">▶</button><button id="mobile-interact">E</button></div>
+        <div class="dialogue hidden" id="dialogue"><div class="dialogue-card"><div class="dialogue-speaker" id="speaker">UNKNOWN</div><p id="dialogue-text"></p><div class="dialogue-actions" id="dialogue-actions"></div><button class="close-dialogue" id="close-dialogue">CLOSE ×</button></div></div>
+        <div class="vignette"></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
