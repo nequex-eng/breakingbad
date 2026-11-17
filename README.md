@@ -20,3 +20,7 @@ Build command: `npm run build`
 Output directory: `dist`
 
 All visuals are generated in code. Replace the prototype geometry with licensed/original assets as production work progresses.
+
+
+## Deployment
+Cloudflare Pages project: `breakingbad-world` (Git-connected, automatic production builds from `main`).
