@@ -158,10 +158,6 @@ for(const side of [-1,1]){
  const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,materials.dark,8);
 }
 player.position.set(0,0,0);
-const playerHealthBar=new THREE.Group();player.add(playerHealthBar);playerHealthBar.position.set(0,3.05,0);
-const hpBack=new THREE.Mesh(new THREE.PlaneGeometry(1.8,.18),new THREE.MeshBasicMaterial({color:0x241d1a,side:THREE.DoubleSide}));
-const playerHealthFill=new THREE.Mesh(new THREE.PlaneGeometry(1.72,.11),new THREE.MeshBasicMaterial({color:0x58c77b,side:THREE.DoubleSide}));
-playerHealthFill.position.set(-.86,0,.012);playerHealthFill.geometry.translate(.86,0,0);playerHealthBar.add(hpBack,playerHealthFill);
 
 function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
  const root=new THREE.Group();root.position.set(x,0,z);scene.add(root);
@@ -173,11 +169,12 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
+const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation.y=Math.PI;
 
 const locations=[
  {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:13,type:'mission'},
  {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,17),range:15,type:'talk'},
- {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-70),range:19,type:'warehouse'},
+ {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-50),range:15,type:'warehouse'},
  {name:'GAS STATION',label:'THE GAS STATION',pos:new THREE.Vector3(78,0,22),range:14,type:'gas'}
 ];
 function worldLabel(text,x,z,color='#e8d9b8'){
@@ -187,11 +184,11 @@ function worldLabel(text,x,z,color='#e8d9b8'){
  const tex=new THREE.CanvasTexture(c);const mesh=new THREE.Mesh(new THREE.PlaneGeometry(13,2.8),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
  mesh.position.set(x,8,z);scene.add(mesh);return mesh;
 }
-const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-70),worldLabel('GAS / REPAIR',78,22)];
+const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false;
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,updatedAt:Date.now()}));}catch{}}
-function updateHealthUI(){const fill=$('health-fill'),value=$('health-value');if(fill)fill.style.width=health+'%';if(value)value.textContent=Math.ceil(health)+' / 100';if(playerHealthFill)playerHealthFill.scale.x=Math.max(.001,health/100);}
+function updateHealthUI(){ /* Health remains a gameplay mechanic; visual health bars are intentionally removed. */ }
 function damagePlayer(amount,reason='You were hurt.'){
  health=Math.max(0,health-amount);updateHealthUI();saveGame();showToast(reason+' Health -'+amount+'.');
  if(health<=0){health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,29);showToast('You recovered at the diner. $300 lost; health restored.');updateHealthUI();saveGame();updateHUD();}
@@ -213,6 +210,7 @@ function updateHUD(){
  const step=Math.min(missionStep,3);
  $('mission-title').textContent=titles[step];
  $('mission-copy').textContent=copies[step];
+ const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','38%','68%','100%'][step];
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
@@ -280,11 +278,13 @@ function drawMiniMap(){
 function onInteract(){if(!dialogOpen&&active)interact(active);}
 
 window.addEventListener('keydown',e=>{
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  keys[e.code]=true;
  if(e.code==='KeyE'||e.code==='Enter') onInteract();
  if(e.code==='Escape') closeDialogue();
 });
 window.addEventListener('keyup',e=>keys[e.code]=false);
+window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;});
 renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
 renderer.domElement.addEventListener('pointerup',()=>dragging=false);
 renderer.domElement.addEventListener('pointermove',e=>{
@@ -310,7 +310,7 @@ function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
  if(!dialogOpen){
-  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const forward=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
   const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
   const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
   const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
@@ -325,13 +325,13 @@ function animate(){
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
  }
  updateActive();
- jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;warehouseNPC.root.position.y=Math.sin(performance.now()*.0011+warehouseNPC.phase)*.02;
  const camDist=10.5;
  const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
  const desired=cameraTarget.clone().add(offset);
  camera.position.lerp(desired,1-Math.pow(.001,dt));
- camera.lookAt(cameraTarget);playerHealthBar.quaternion.copy(camera.quaternion);landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
+ camera.lookAt(cameraTarget);landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
  renderer.render(scene,camera);
 }
 updateHUD();saveGame();drawMiniMap();animate();
