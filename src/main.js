@@ -145,6 +145,7 @@ car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 
 // Player character, original low-poly civilian silhouette
 const player=new THREE.Group(); scene.add(player);
+let chosenCharacter='walter',gameStarted=false;
 const body= new THREE.Group(); player.add(body);
 cylinder(body,0,1.35,0,.42,.5,1.05,materials.blue,9);
 const head=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),mat(0xb98e6e));
@@ -157,6 +158,19 @@ for(const side of [-1,1]){
 }
 player.position.set(0,0,0);
 
+const economyPoints=[
+ {kind:'supply',name:'SEALED CACHE A',label:'COLLECT SEALED A',pos:new THREE.Vector3(76,0,72),resource:'A'},
+ {kind:'supply',name:'SEALED CACHE B',label:'COLLECT SEALED B',pos:new THREE.Vector3(116,0,35),resource:'B'},
+ {kind:'supply',name:'SEALED CACHE C',label:'COLLECT SEALED C',pos:new THREE.Vector3(145,0,-12),resource:'C'},
+ {kind:'lab',name:'WORKSHOP',label:'MAKE A BATCH',pos:new THREE.Vector3(100,0,-70)},
+ {kind:'buyer',name:'BACK-ALLEY CONTACT',label:'SELL FINISHED BATCH',pos:new THREE.Vector3(-66,0,28)}
+];
+for(const p of economyPoints){
+ const beacon=new THREE.Group();beacon.position.copy(p.pos);scene.add(beacon);
+ cylinder(beacon,0,.12,0,.8,.8,.22,materials.yellow,10);
+ const orb=new THREE.Mesh(new THREE.OctahedronGeometry(.62,0),new THREE.MeshStandardMaterial({color:p.kind==='lab'?0x6ca5a1:p.kind==='buyer'?0xb86a53:0xd1b66d,emissive:0x302814,emissiveIntensity:.45}));
+ orb.position.y=1.35;beacon.add(orb);p.visual=orb;
+}
 const locations=[
  {name:'WHITE HOME',label:'TALK TO SKYLER',pos:new THREE.Vector3(-30,0,-25),range:8,type:'skyler'},
  {name:'WALTER JR.',label:'TALK TO WALTER JR.',pos:new THREE.Vector3(-35,0,-25),range:8,type:'junior'},
@@ -193,9 +207,27 @@ const SAVE_KEY='abq-stories-save-v1';
 let saved={};
 try { saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{}; } catch {}
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false;
+const inventory={A:0,B:0,C:0,batches:0,...(saved.inventory||{})};
+if(saved.chosenCharacter)chosenCharacter=saved.chosenCharacter;
+function updateLoopHUD(){
+ $('inventory-line').textContent='SEALED A '+inventory.A+' · B '+inventory.B+' · C '+inventory.C;
+ $('batch-line').textContent='FINISHED BATCHES '+inventory.batches;
+ $('player-role').textContent=chosenCharacter==='walter'?'HEISENBERG':'JESSE PINKMAN';
+ $('loop-hint').textContent=inventory.batches>0?'A buyer is waiting. Take a batch to the contact.':'Collect one sealed unit of A, B and C, then visit the workshop.';
+}
+function startAs(role){
+ chosenCharacter=role;gameStarted=true;
+ const shirt=role==='walter'?0x53677a:0x6f8069;
+ body.children.forEach(o=>{if(o.geometry?.type==='CylinderGeometry'&&o.position.y>1)o.material=mat(shirt);});
+ player.position.set(role==='walter'?0:5,0,0);
+ $('character-select').classList.add('hidden');updateHUD();updateLoopHUD();saveGame();
+ showToast(role==='walter'?'You are Heisenberg. Build the operation carefully.':'You are Jesse. Work the streets and move quickly.');
+}
+$('choose-walter').onclick=()=>startAs('walter');
+$('choose-jesse').onclick=()=>startAs('jesse');
 const defaults={skyler:{trust:58,suspicion:12,fear:0},junior:{trust:76,suspicion:3,fear:0},jesse:{trust:28,suspicion:18,fear:0},teacher:{trust:52,suspicion:4,fear:0},diner:{trust:50,suspicion:5,fear:0}};
 const people={};for(const [id,base] of Object.entries(defaults)){const old=saved.people?.[id]||{};people[id]={...base,...old,knowledge:Array.isArray(old.knowledge)?old.knowledge:[],memories:Array.isArray(old.memories)?old.memories:[]};}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,missionStep,people,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,missionStep,people,inventory,chosenCharacter,updatedAt:Date.now()}));}catch{}}
 function affect(id,delta={},memory='',knowledge=''){const p=people[id];if(!p)return;for(const k of ['trust','suspicion','fear'])if(Number.isFinite(delta[k]))p[k]=THREE.MathUtils.clamp(p[k]+delta[k],0,100);if(knowledge&&!p.knowledge.includes(knowledge))p.knowledge.push(knowledge);if(memory){p.memories.push({text:memory,at:Date.now()});p.memories=p.memories.slice(-12);}saveGame();updateHUD();}
 
 const keys={};
@@ -207,6 +239,7 @@ function showToast(text){
  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>$('toast').classList.remove('show'),2600);
 }
 function updateHUD(){
+ updateLoopHUD();
  $('cash').textContent='$'+cash.toLocaleString('en-US');
  const stats=$('stats'); if(stats) stats.textContent='SKYLER '+people.skyler.trust+' · JESSE '+people.jesse.trust+' · HEAT '+heat;
  $('mission-title').textContent=missionStep===0?'A LIFE THAT LOOKS NORMAL':missionStep===1?'A CONVERSATION WITH JESSE':'TWO LIVES, ONE MAN';
@@ -226,6 +259,24 @@ $('close-dialogue').onclick=closeDialogue;
 
 function interact(target){
  if(!target)return;
+ if(target.kind==='supply'){
+  const key=target.resource,amount=chosenCharacter==='jesse'?2:1;
+  inventory[key]+=amount;target.label='CACHE EMPTY';target.collected=true;
+  target.visual.material.color.setHex(0x596052);target.visual.material.emissive.setHex(0x101510);
+  showToast((chosenCharacter==='jesse'?'Jesse':'Heisenberg')+' collected '+amount+' sealed unit(s) '+key+'.');
+  updateLoopHUD();saveGame();return;
+ }
+ if(target.kind==='lab'){
+  if(inventory.A<1||inventory.B<1||inventory.C<1){showToast('Workshop requires one sealed unit each of A, B and C.');return;}
+  inventory.A--;inventory.B--;inventory.C--;inventory.batches++;
+  inventory.lastQuality=chosenCharacter==='walter'?88+Math.floor(Math.random()*11):62+Math.floor(Math.random()*24);
+  showToast('Batch completed. Quality rating: '+inventory.lastQuality+'.');updateLoopHUD();saveGame();return;
+ }
+ if(target.kind==='buyer'){
+  if(inventory.batches<1){showToast('No finished batches to sell.');return;}
+  const quality=inventory.lastQuality||70,payout=Math.round(450+quality*12+(chosenCharacter==='jesse'?120:0));
+  inventory.batches--;cash+=payout;heat=Math.min(100,heat+(chosenCharacter==='jesse'?4:6));
+  showToast('Deal complete. +
  if(target.type==='skyler')openDialogue('SKYLER WHITE',people.skyler.suspicion>35?"You keep saying everything is fine. You expect me not to notice?":"You have been somewhere else lately, Walt. If something is wrong, tell me.",[
  {label:'Tell her the truth about the diagnosis',run:()=>{affect('skyler',{trust:12,suspicion:-8},'Walter told Skyler about the cancer diagnosis.','Walter has cancer.');missionStep=Math.max(missionStep,1);showToast('Skyler knows about the diagnosis, not everything.');}},
  {label:'Say it is only work stress',run:()=>{affect('skyler',{trust:-5,suspicion:8},'Walter blamed his distance on work.');showToast('She notices the evasion.');}},
@@ -247,7 +298,114 @@ function interact(target){
 }
 function updateActive(){
  active=null; let best=Infinity;
- for(const l of locations){
+ for(const l of [...locations,...economyPoints]){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='WHITE RESIDENCE';
+ if(player.position.distanceTo(locations[2].pos)<40) zone='SCHOOL DISTRICT';
+ if(player.position.distanceTo(locations[3].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[4].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[5].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen&&gameStarted){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?(chosenCharacter==='jesse'?16:13):(chosenCharacter==='jesse'?8.5:7))*dt;
+  // W moves away from the camera (the character's forward direction).
+  const direction=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+  const right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[-132,-48,18,11]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
+ dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ skylerNPC.root.position.y=Math.sin(performance.now()*.0009+skylerNPC.phase)*.012;juniorNPC.root.position.y=Math.sin(performance.now()*.0011+juniorNPC.phase)*.015;teacherNPC.root.position.y=Math.sin(performance.now()*.001+teacherNPC.phase)*.012;
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();updateLoopHUD();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++payout.toLocaleString('en-US')+'. Heat increased.');
+  updateLoopHUD();saveGame();updateHUD();return;
+ }
+ if(target.type==='skyler')openDialogue('SKYLER WHITE',people.skyler.suspicion>35?"You keep saying everything is fine. You expect me not to notice?":"You have been somewhere else lately, Walt. If something is wrong, tell me.",[
+ {label:'Tell her the truth about the diagnosis',run:()=>{affect('skyler',{trust:12,suspicion:-8},'Walter told Skyler about the cancer diagnosis.','Walter has cancer.');missionStep=Math.max(missionStep,1);showToast('Skyler knows about the diagnosis, not everything.');}},
+ {label:'Say it is only work stress',run:()=>{affect('skyler',{trust:-5,suspicion:8},'Walter blamed his distance on work.');showToast('She notices the evasion.');}},
+ {label:'Shut down the conversation',run:()=>{affect('skyler',{trust:-9,suspicion:13},'Walter refused to explain.');showToast('The silence creates distance.');}}]);
+ else if(target.type==='junior')openDialogue('WALTER JR.',people.junior.memories.length?'You said you would be honest with us. Are you feeling better?':'Hey, Dad. Mom says you have been tired. Are you okay?',[
+ {label:'Spend a moment with him',run:()=>{affect('junior',{trust:8,suspicion:-2},'Walter spent time with his son.');showToast('A small moment of normal life.');}},
+ {label:'Tell him not to worry',run:()=>{affect('junior',{trust:1,suspicion:2},'Walter reassured his son without explaining.');showToast('He wants to believe you.');}}]);
+ else if(target.type==='teacher')openDialogue('SCHOOL COLLEAGUE','You have been distracted in class, Walt. Everything all right?',[
+ {label:'Keep it professional',run:()=>{affect('teacher',{trust:3},'Walter kept the conversation professional.');showToast('A normal day at school.');}},
+ {label:'Admit something is wrong',run:()=>{affect('teacher',{trust:6,suspicion:1},'Walter admitted a personal problem.','Walter has a serious personal problem.');showToast('Your colleague knows something is wrong, not what.');}}]);
+ else if(target.type==='jesse')openDialogue('JESSE PINKMAN',people.jesse.trust<25?'Mr. White? You show up after all this time and expect me to trust you?':'My old chemistry teacher. This is weird. What do you want?',[
+ {label:'Ask him to hear you out',run:()=>{affect('jesse',{trust:10,suspicion:3},'Walter asked Jesse to hear a proposal.','Walter approached Jesse with a proposal.');missionStep=Math.max(missionStep,2);showToast('Jesse agrees to hear you out — cautiously.');}},
+ {label:'Offer him money to listen',run:()=>{cash=Math.max(0,cash-300);affect('jesse',{trust:2,suspicion:7},'Walter offered Jesse $300.');showToast('Money got his attention, not his trust.');}},
+ {label:'Remind him you were his teacher',run:()=>{affect('jesse',{trust:-4,suspicion:6},'Walter invoked his authority as Jesse’s former teacher.');showToast('Jesse dislikes being talked down to.');}}]);
+ else if(target.type==='diner')openDialogue('DINER REGULAR',people.diner.memories.length?'People are talking about strange things happening around town.':'Morning. Same coffee?',[
+ {label:'Make ordinary conversation',run:()=>{affect('diner',{trust:4,suspicion:-1},'Walter shared ordinary conversation.');showToast('For a moment, life feels ordinary.');}},
+ {label:'Ask what people are saying',run:()=>{affect('diner',{trust:-1,suspicion:4},'Walter pressed for local rumors.');heat++;showToast('Your questions stood out.');}}]);
+ else openDialogue('DESERT WAREHOUSE','The warehouse is quiet. Walter has no reason to go inside yet.',[{label:'Leave',run:()=>{}}]);
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of [...locations,...economyPoints]){
   const d=player.position.distanceTo(l.pos);
   if(d<l.range&&d<best){best=d;active=l;}
  }
