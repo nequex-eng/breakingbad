@@ -1,14 +1,11 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111713"><meta name="description" content="An unofficial Breaking Bad-inspired pick-up-and-play strategy game."><title>BREAKING BAD — The Operation</title></head><body><main id="app">
-<section id="select" class="screen select-screen"><div class="eyebrow">ALBUQUERQUE · NEW GAME</div><h1>THE OPERATION</h1><p class="sub">Choose your character. Start playing immediately.</p><div class="characters">
-<button class="character" id="heisenberg"><span>THE CHEMIST</span><strong>HEISENBERG</strong><small>WALTER WHITE</small><p>Higher product quality. Better payout.</p><b>PLAY</b></button>
-<button class="character jesse" id="jesse"><span>THE PARTNER</span><strong>JESSE PINKMAN</strong><small>THE FIELD OPERATOR</small><p>Collect more supplies each turn.</p><b>PLAY</b></button></div><div class="footnote">FICTIONAL GAME MECHANICS · ABSTRACT GAME TOKENS</div></section>
-<section id="game" class="screen game-screen hidden"><header class="header"><div><div class="eyebrow">ALBUQUERQUE</div><h1>THE OPERATION</h1></div><div class="money"><small>CASH</small><strong id="cash">$0</strong></div></header>
-<div class="status"><span id="role">HEISENBERG</span><span id="round">ROUND 1</span><span id="heat">HEAT 0</span></div>
-<section class="objective"><small>YOUR OBJECTIVE</small><h2 id="goal">Make your first sale</h2><p id="instruction">Collect supplies, make a batch, and sell it.</p><div class="progress"><i id="progress"></i></div></section>
-<section class="inventory"><div class="section-head"><h3>SUPPLIES</h3><span>ABSTRACT GAME TOKENS</span></div><div class="supply-grid">
-<div class="supply"><span class="token token-a">A</span><b id="a-count">0</b><small>COMPONENT A</small><button id="collect-a">COLLECT</button></div>
-<div class="supply"><span class="token token-b">B</span><b id="b-count">0</b><small>COMPONENT B</small><button id="collect-b">COLLECT</button></div>
-<div class="supply"><span class="token token-c">C</span><b id="c-count">0</b><small>COMPONENT C</small><button id="collect-c">COLLECT</button></div></div></section>
-<section class="workshop"><div><small>WORKSHOP</small><h3>MAKE A BATCH</h3><p id="craft-copy">You need one of each component.</p></div><button class="primary" id="craft" disabled>MAKE BATCH</button></section>
-<section class="sale"><div><small>STREET CONTACT</small><h3>SELL YOUR BATCH</h3><p id="batch-copy">No finished batches yet.</p></div><button class="primary sell" id="sell" disabled>SELL</button></section>
-<section class="log"><div class="section-head"><h3>WHAT'S HAPPENING</h3><button id="reset">NEW GAME</button></div><p id="message" aria-live="polite">Choose a supply to get started.</p></section><footer>COLLECT <span>→</span> MAKE <span>→</span> SELL <span>→</span> REPEAT</footer></section></main><script type="module" src="/src/main.js"></script></body></html>
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#101511"><meta name="description" content="An unofficial 3D fan game inspired by Breaking Bad."><title>BREAKING BAD — The Cookhouse</title></head>
+<body><main id="app"><div id="loading"><b>ABQ</b><span>ENTERING THE RV</span></div>
+<section id="select"><div class="kicker">ALBUQUERQUE · 2008</div><h1>THE COOKHOUSE</h1><p>Choose who takes the lead.</p><div class="choices"><button id="pick-walt"><strong>HEISENBERG</strong><small>WALTER WHITE</small><span>Precision · Better batch value</span></button><button id="pick-jesse"><strong>JESSE PINKMAN</strong><small>THE PARTNER</small><span>Fast hands · Faster supply handling</span></button></div></section>
+<div id="hud"><header><div class="brand">THE COOKHOUSE <small>RV · NEW MEXICO</small></div><div class="stats"><span id="cash">$0</span><span id="heat">HEAT 0</span></div></header>
+<div class="objective"><small>TONIGHT'S JOB</small><b id="objective">Get the sealed supplies</b><span id="objective-sub">Move around the RV. Walk up to a station and press E.</span></div>
+<div class="inventory"><span id="supplies">SUPPLIES 0 / 3</span><span id="batch">BATCH 0</span><span id="partner">PARTNER: JESSE</span></div>
+<div id="prompt"><kbd>E</kbd><span id="prompt-text">INTERACT</span></div><div id="toast"></div>
+<div class="controls"><span>W A S D · MOVE</span><span>E · INTERACT</span><span>DRAG · LOOK</span></div>
+<div class="mobile"><div class="pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyS">▼</button><button data-key="KeyD">▶</button></div></div><button id="touch-e">E</button></div>
+<div id="dialog" class="hidden"><div class="dialog-card"><small id="dialog-who">JESSE</small><p id="dialog-text"></p><button id="dialog-ok">GOT IT</button></div></div></div></main><script type="module" src="/src/main.js"></script></body></html>
