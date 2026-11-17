@@ -14,6 +14,13 @@
         <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter">CHAPTER 01 <span>·</span> THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong><small id="stats">TRUST 50 · HEAT 8</small></div><div class="drive-info" id="drive-info">ON FOOT</div></header>
         <section class="mission"><div class="eyebrow">CURRENT OBJECTIVE</div><h1 id="mission-title">A DIFFERENT KIND OF FUTURE</h1><p id="mission-copy">Head to the car wash. Someone is waiting to talk.</p><small class="objective-distance" id="objective-distance">TARGET DISTANCE · —</small><div class="objective-progress"><i></i></div></section>
         <canvas id="minimap" width="220" height="220" aria-label="Nearby map"></canvas>
+        <div id="map-overlay" class="map-overlay hidden">
+          <section class="map-card">
+            <div class="map-heading"><strong>ALBUQUERQUE · CITY MAP</strong><button id="map-close">CLOSE ×</button></div>
+            <canvas id="world-map" width="960" height="600"></canvas>
+            <div class="map-legend">GOLD · CURRENT OBJECTIVE　 WHITE · YOU　 BLUE · YOUR SEDAN　 M / ESC · CLOSE</div>
+          </section>
+        </div>
         <div class="location" id="location">RESIDENTIAL DISTRICT <span>·</span> ALBUQUERQUE, NM</div>
         <div class="interaction" id="interaction"><kbd>E</kbd><span id="interaction-copy">INTERACT</span></div>
         <div class="toast" id="toast"></div>
