@@ -170,6 +170,7 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
 const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation.y=Math.PI;
+const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
 
 const locations=[
  {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:13,type:'mission'},
@@ -318,14 +319,18 @@ function animate(){
   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
-   const blocked=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7]].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx&&Math.abs(next.z-z)<rz);
-   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+   const obstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7],[19,15,3.1,2],[-93,19,3.1,2],[51,-20,3.1,2]];
+   const isBlocked=(x,z)=>obstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
+   const oldX=player.position.x,oldZ=player.position.z;
+   if(!isBlocked(next.x,oldZ))player.position.x=next.x;
+   if(!isBlocked(player.position.x,next.z))player.position.z=next.z;
+   if(player.position.x!==oldX||player.position.z!==oldZ)player.rotation.y=Math.atan2(move.x,move.z);
   }
   player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
  }
  updateActive();
- jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;warehouseNPC.root.position.y=Math.sin(performance.now()*.0011+warehouseNPC.phase)*.02;
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;warehouseNPC.root.position.y=Math.sin(performance.now()*.0011+warehouseNPC.phase)*.02;ambientNPCs.forEach((npc,i)=>{npc.root.position.y=Math.sin(performance.now()*.0009+npc.phase)*.018;npc.root.rotation.y+=Math.sin(performance.now()*.00025+i)*.00015;});
  const camDist=10.5;
  const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
