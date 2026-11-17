@@ -429,27 +429,31 @@ const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStor
  box(desertCamp,-20,.03,-8,1.2,.03,28,mat(0x9b8667),false);
  box(desertCamp,-4,.03,-8,1.2,.03,28,mat(0x9b8667),false);
  // Canvas shade and support poles.
- for(const x of [-2,9])for(const z of [-5,5])cylinder(desertCamp,x,2.5,z,.09,.09,5,campMetal,8);
- box(desertCamp,3,5,0,14,.18,12,campCanvas,false);
- box(desertCamp,3,4.88,0,14,.06,12,mat(0x8d927d),false);
+ for(const x of [4.5,14.5])for(const z of [-5,5])cylinder(desertCamp,x,2.5,z,.09,.09,5,campMetal,8);
+ box(desertCamp,9.5,5,0,14,.18,12,campCanvas,false);
+ box(desertCamp,9.5,4.88,0,14,.06,12,mat(0x8d927d),false);
  // Workbench and stylized, sealed fictional apparatus (no real-world process).
- box(desertCamp,3.4,1.15,1.2,5.8,.22,2.1,campWood);
- for(const x of [.9,5.9])for(const z of [.55,1.85])box(desertCamp,x,.52,z,.16,1.05,.16,campDark);
- const cookMachine=new THREE.Group();cookMachine.position.set(3.5,1.35,1.2);desertCamp.add(cookMachine);
+ box(desertCamp,9.5,1.15,1.2,5.8,.22,2.1,campWood);
+ for(const x of [7,12])for(const z of [.55,1.85])box(desertCamp,x,.52,z,.16,1.05,.16,campDark);
+ const cookMachine=new THREE.Group();cookMachine.position.set(9.5,1.35,1.2);desertCamp.add(cookMachine);
  box(cookMachine,0,.45,0,1.8,.95,1.25,campMetal);
  box(cookMachine,0,1.02,.02,1.45,.12,1.02,campDark);
  const cookGlow=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),new THREE.MeshBasicMaterial({color:0x58c7d5,transparent:true,opacity:.18}));
  cookGlow.position.set(0,1.2,.05);cookMachine.add(cookGlow);
  for(let i=0;i<3;i++){const dial=new THREE.Mesh(new THREE.CircleGeometry(.12,16),new THREE.MeshBasicMaterial({color:i===1?0x9eae79:0x8b9b9a}));dial.position.set(-.48+i*.48,.55,.64);cookMachine.add(dial);}
- const sealedPackage=box(desertCamp,6.8,.55,2.3,1.05,1.05,1.05,mat(0x9b8a6b));sealedPackage.visible=false;
- for(const [x,z] of [[-4,3],[10,3],[-5,-4],[10,-4]])box(desertCamp,x,.62,z,1.8,1.2,1.8,campWood);
- for(const [x,z] of [[-7,6],[12,7]]){cylinder(desertCamp,x,.72,z,.55,.55,1.45,campMetal,12);cylinder(desertCamp,x,.12,z,.58,.58,.12,campDark,12);}
- const campChair=new THREE.Group();campChair.position.set(8,0,5);desertCamp.add(campChair);
+ const sealedPackage=box(desertCamp,13,.55,2.3,1.05,1.05,1.05,mat(0x9b8a6b));sealedPackage.visible=false;
+ for(const [x,z] of [[2,3],[16,3],[2,-4],[16,-4]])box(desertCamp,x,.62,z,1.8,1.2,1.8,campWood);
+ for(const [x,z] of [[0,6],[18,7]]){cylinder(desertCamp,x,.72,z,.55,.55,1.45,campMetal,12);cylinder(desertCamp,x,.12,z,.58,.58,.12,campDark,12);}
+ const campChair=new THREE.Group();campChair.position.set(15,0,5);desertCamp.add(campChair);
  box(campChair,0,.72,0,1.2,.12,1,campCanvas);box(campChair,0,.38,.38,1.15,.1,.12,campMetal);
  for(const x of [-.5,.5])for(const z of [-.35,.35])box(campChair,x,.34,z,.07,.68,.07,campMetal);
- const campLight=new THREE.PointLight(0xd4b77b,0,18);campLight.position.set(3,4.5,0);desertCamp.add(campLight);
+ const campLight=new THREE.PointLight(0xd4b77b,0,18);campLight.position.set(9.5,4.5,0);desertCamp.add(campLight);
  const vaporPuffs=[];
- for(let i=0;i<4;i++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.22+i*.035,10,8),new THREE.MeshBasicMaterial({color:0xc9d2cb,transparent:true,opacity:0}));puff.position.set(3.5,2.2+i*.38,1.2);desertCamp.add(puff);vaporPuffs.push(puff);}
+ for(let i=0;i<4;i++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.22+i*.035,10,8),new THREE.MeshBasicMaterial({color:0xc9d2cb,transparent:true,opacity:0}));puff.position.set(9.5,2.2+i*.38,1.2);desertCamp.add(puff);vaporPuffs.push(puff);}
+
+ // Low red-rock mesas frame the isolated clearing; sparse desert plants break up the horizon.
+ for(const [x,z,r,h,color] of [[-30,47,18,22,0x8e7964],[-5,55,22,28,0x9a8069],[28,49,16,19,0x88735e]]){const mesa=new THREE.Mesh(new THREE.ConeGeometry(r,h,5),mat(color));mesa.position.set(x,h/2-1,z);mesa.rotation.y=.3;desertCamp.add(mesa);}
+ for(const [x,z] of [[-26,-15],[-23,14],[25,-18],[26,16],[-15,23],[17,24]]){cylinder(desertCamp,x,.9,z,.32,.42,1.8,materials.cactus,7);box(desertCamp,x+.36,1,z,.2,.9,.2,materials.cactus);box(desertCamp,x+.26,1.35,z,.35,.18,.2,materials.cactus);}
  worldLabel('DESERT COOK SITE',-187,147,'#d7c29a');
 
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],cookState=['idle','cooking','ready','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
