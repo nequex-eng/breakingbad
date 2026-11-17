@@ -1,35 +1,14 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#101411" />
-    <meta name="description" content="An unofficial, original 3D crime-drama sandbox inspired by the world of Breaking Bad." />
-    <title>BREAKING BAD — Albuquerque Stories</title>
-  </head>
-  <body>
-    <div id="app">
-      <div id="loading"><div class="loader-mark">ABQ</div><div>ENTERING ALBUQUERQUE</div></div>
-<section id="character-select" class="character-select">
- <div class="select-kicker">ALBUQUERQUE · NEW GAME</div><h1>CHOOSE YOUR SIDE</h1><p class="select-intro">Two men. One operation. Different strengths.</p>
- <div class="character-options">
-  <button class="character-card" id="choose-walter"><span class="character-index">01 / THE CHEMIST</span><strong>HEISENBERG</strong><small>WALTER WHITE</small><p>Precision · Product quality · Strategic control</p><em>PLAY AS HEISENBERG</em></button>
-  <button class="character-card" id="choose-jesse"><span class="character-index">02 / THE PARTNER</span><strong>JESSE PINKMAN</strong><small>THE FIELD OPERATOR</small><p>Fast collection · Street contacts · Quick deals</p><em>PLAY AS JESSE</em></button>
- </div><div class="select-note">FICTIONAL GAME SYSTEM · NO REAL-WORLD FORMULAS</div>
-</section>
-<section id="game-loop" class="game-loop"><div class="loop-title">OPERATION STATUS <span id="player-role">HEISENBERG</span></div><div class="inventory-line" id="inventory-line">SEALED A 0 · B 0 · C 0</div><div class="batch-line" id="batch-line">FINISHED BATCHES 0</div><div class="loop-hint" id="loop-hint">Collect sealed supplies around the city.</div></section>
-      <div id="hud">
-        <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter">CHAPTER 01 <span>·</span> THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong><small id="stats">TRUST 50 · HEAT 8</small></div></header>
-        <section class="mission"><div class="eyebrow">CURRENT OBJECTIVE</div><h1 id="mission-title">A DIFFERENT KIND OF FUTURE</h1><p id="mission-copy">Head to the car wash. Someone is waiting to talk.</p><div class="objective-progress"><i></i></div></section>
-        <div class="location" id="location">RESIDENTIAL DISTRICT <span>·</span> ALBUQUERQUE, NM</div>
-        <div class="interaction" id="interaction"><kbd>E</kbd><span id="interaction-copy">INTERACT</span></div>
-        <div class="toast" id="toast"></div>
-        <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> MOVE</span><span><kbd>SHIFT</kbd> WALK FASTER</span><span><kbd>E</kbd> INTERACT</span><span><kbd>DRAG</kbd> LOOK</span></div>
-        <div class="mobile-controls"><button id="mobile-forward">▲</button><button id="mobile-left">◀</button><button id="mobile-back">▼</button><button id="mobile-right">▶</button><button id="mobile-interact">E</button></div>
-        <div class="dialogue hidden" id="dialogue"><div class="dialogue-card"><div class="dialogue-speaker" id="speaker">UNKNOWN</div><p id="dialogue-text"></p><div class="dialogue-actions" id="dialogue-actions"></div><button class="close-dialogue" id="close-dialogue">CLOSE ×</button></div></div>
-        <div class="vignette"></div>
-      </div>
-    </div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111713"><meta name="description" content="An unofficial Breaking Bad-inspired pick-up-and-play strategy game."><title>BREAKING BAD — The Operation</title></head><body><main id="app">
+<section id="select" class="screen select-screen"><div class="eyebrow">ALBUQUERQUE · NEW GAME</div><h1>THE OPERATION</h1><p class="sub">Choose your character. Start playing immediately.</p><div class="characters">
+<button class="character" id="heisenberg"><span>THE CHEMIST</span><strong>HEISENBERG</strong><small>WALTER WHITE</small><p>Higher product quality. Better payout.</p><b>PLAY</b></button>
+<button class="character jesse" id="jesse"><span>THE PARTNER</span><strong>JESSE PINKMAN</strong><small>THE FIELD OPERATOR</small><p>Collect more supplies each turn.</p><b>PLAY</b></button></div><div class="footnote">FICTIONAL GAME MECHANICS · ABSTRACT GAME TOKENS</div></section>
+<section id="game" class="screen game-screen hidden"><header class="header"><div><div class="eyebrow">ALBUQUERQUE</div><h1>THE OPERATION</h1></div><div class="money"><small>CASH</small><strong id="cash">$0</strong></div></header>
+<div class="status"><span id="role">HEISENBERG</span><span id="round">ROUND 1</span><span id="heat">HEAT 0</span></div>
+<section class="objective"><small>YOUR OBJECTIVE</small><h2 id="goal">Make your first sale</h2><p id="instruction">Collect supplies, make a batch, and sell it.</p><div class="progress"><i id="progress"></i></div></section>
+<section class="inventory"><div class="section-head"><h3>SUPPLIES</h3><span>ABSTRACT GAME TOKENS</span></div><div class="supply-grid">
+<div class="supply"><span class="token token-a">A</span><b id="a-count">0</b><small>COMPONENT A</small><button id="collect-a">COLLECT</button></div>
+<div class="supply"><span class="token token-b">B</span><b id="b-count">0</b><small>COMPONENT B</small><button id="collect-b">COLLECT</button></div>
+<div class="supply"><span class="token token-c">C</span><b id="c-count">0</b><small>COMPONENT C</small><button id="collect-c">COLLECT</button></div></div></section>
+<section class="workshop"><div><small>WORKSHOP</small><h3>MAKE A BATCH</h3><p id="craft-copy">You need one of each component.</p></div><button class="primary" id="craft" disabled>MAKE BATCH</button></section>
+<section class="sale"><div><small>STREET CONTACT</small><h3>SELL YOUR BATCH</h3><p id="batch-copy">No finished batches yet.</p></div><button class="primary sell" id="sell" disabled>SELL</button></section>
+<section class="log"><div class="section-head"><h3>WHAT'S HAPPENING</h3><button id="reset">NEW GAME</button></div><p id="message" aria-live="polite">Choose a supply to get started.</p></section><footer>COLLECT <span>→</span> MAKE <span>→</span> SELL <span>→</span> REPEAT</footer></section></main><script type="module" src="/src/main.js"></script></body></html>
