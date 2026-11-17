@@ -10,6 +10,14 @@
   <body>
     <div id="app">
       <div id="loading"><div class="loader-mark">ABQ</div><div>ENTERING ALBUQUERQUE</div></div>
+<section id="character-select" class="character-select">
+ <div class="select-kicker">ALBUQUERQUE · NEW GAME</div><h1>CHOOSE YOUR SIDE</h1><p class="select-intro">Two men. One operation. Different strengths.</p>
+ <div class="character-options">
+  <button class="character-card" id="choose-walter"><span class="character-index">01 / THE CHEMIST</span><strong>HEISENBERG</strong><small>WALTER WHITE</small><p>Precision · Product quality · Strategic control</p><em>PLAY AS HEISENBERG</em></button>
+  <button class="character-card" id="choose-jesse"><span class="character-index">02 / THE PARTNER</span><strong>JESSE PINKMAN</strong><small>THE FIELD OPERATOR</small><p>Fast collection · Street contacts · Quick deals</p><em>PLAY AS JESSE</em></button>
+ </div><div class="select-note">FICTIONAL GAME SYSTEM · NO REAL-WORLD FORMULAS</div>
+</section>
+<section id="game-loop" class="game-loop"><div class="loop-title">OPERATION STATUS <span id="player-role">HEISENBERG</span></div><div class="inventory-line" id="inventory-line">SEALED A 0 · B 0 · C 0</div><div class="batch-line" id="batch-line">FINISHED BATCHES 0</div><div class="loop-hint" id="loop-hint">Collect sealed supplies around the city.</div></section>
       <div id="hud">
         <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter">CHAPTER 01 <span>·</span> THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong><small id="stats">TRUST 50 · HEAT 8</small></div></header>
         <section class="mission"><div class="eyebrow">CURRENT OBJECTIVE</div><h1 id="mission-title">A DIFFERENT KIND OF FUTURE</h1><p id="mission-copy">Head to the car wash. Someone is waiting to talk.</p><div class="objective-progress"><i></i></div></section>
