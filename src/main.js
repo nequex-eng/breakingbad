@@ -804,7 +804,7 @@ function animate(){
     npc.home.x+=awayX*3.2*dt;npc.home.z+=awayZ*3.2*dt;
     npc.root.rotation.y=Math.atan2(awayX,awayZ);
     const run=Math.sin(animTime*.025)*.42;npc.legs[0].rotation.x=run;npc.legs[1].rotation.x=-run;
-    continue;
+    return;
    }
    const distance=npc.root.position.distanceTo(player.position);
    if(distance<7){npc.root.rotation.y=Math.atan2(player.position.x-npc.root.position.x,player.position.z-npc.root.position.z);npc.legs.forEach(leg=>leg.rotation.x=0);return;}
