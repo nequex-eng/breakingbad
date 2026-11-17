@@ -189,7 +189,7 @@ function car(x,z,color,rotation=0){
  }
  return g;
 }
-const playerCar=car(-6,13,0xe8e4d6,0);
+const playerCar=car(-190,165,0xe8e4d6,0);
 // Replace the starter sedan mesh with a classic 1980s Winnebago-style RV.
 while(playerCar.children.length)playerCar.remove(playerCar.children[0]);
 const rvBody=mat(0xe5e0d1),rvLower=mat(0x777b70),rvGreen=mat(0x4d6856),rvGlass=mat(0x26383b),rvChrome=mat(0xb5b5a7);
@@ -219,6 +219,7 @@ box(playerCar,0,3.08,-.1,1.5,.12,2.2,rvLower);
 box(playerCar,0,3.22,-.1,.72,.12,.72,rvChrome);
 const rvRoofAntenna=cylinder(playerCar,.72,3.23,-2.8,.035,.035,.55,rvChrome,6);rvRoofAntenna.rotation.z=.2;
 box(playerCar,0,.35,-4.0,1.5,.38,.12,rvLower);
+playerCar.scale.setScalar(2);
 car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
@@ -244,34 +245,38 @@ function addParkedCarBlocker(x,z,rotation){
 }
 const VEHICLE_COLLISION_RADIUS=4.25;
 // Conservative circle-vs-box collision covers the whole sedan footprint at every steering angle.
-function vehicleOverlapsBox(position,b){
+function vehicleOverlapsBox(position,b,vehicleRoot=null){
  const closestX=THREE.MathUtils.clamp(position.x,b.x-b.halfX,b.x+b.halfX);
  const closestZ=THREE.MathUtils.clamp(position.z,b.z-b.halfZ,b.z+b.halfZ);
  const dx=position.x-closestX,dz=position.z-closestZ;
- return dx*dx+dz*dz<VEHICLE_COLLISION_RADIUS*VEHICLE_COLLISION_RADIUS;
+ const radius=vehicleRoot===playerCar?8.35:VEHICLE_COLLISION_RADIUS;
+ return dx*dx+dz*dz<radius*radius;
 }
-function vehicleOverlapsPedestrian(position,rotation,npc){
+function vehicleOverlapsPedestrian(position,rotation,npc,vehicleRoot=null){
  const dx=npc.root.position.x-position.x,dz=npc.root.position.z-position.z;
- if(dx*dx+dz*dz>36)return false;
+ const isRV=vehicleRoot===playerCar;
+ if(dx*dx+dz*dz>(isRV?144:36))return false;
  const c=Math.cos(rotation),s=Math.sin(rotation);
  const localX=dx*c-dz*s,localZ=dx*s+dz*c;
- const nearestX=THREE.MathUtils.clamp(localX,-1.58,1.58),nearestZ=THREE.MathUtils.clamp(localZ,-3.95,3.95);
+ const halfWidth=isRV?2.85:1.58,halfLength=isRV?7.85:3.95;
+ const nearestX=THREE.MathUtils.clamp(localX,-halfWidth,halfWidth),nearestZ=THREE.MathUtils.clamp(localZ,-halfLength,halfLength);
  const side=localX-nearestX,front=localZ-nearestZ;
  return side*side+front*front<1.35*1.35;
 }
 function pedestrianBlockedByAnyVehicle(x,z){
  const probe={root:{position:new THREE.Vector3(x,0,z)}};
- return vehicleRegistry.some(vehicle=>vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,probe));
+ return vehicleRegistry.some(vehicle=>vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,probe,vehicle));
 }
 function separatePedestriansFromAllVehicles(){
  for(const npc of allPedestrianActors){
   if(!npc.root.visible)continue;
   for(const vehicle of vehicleRegistry){
-   if(!vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,npc))continue;
+   if(!vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,npc,vehicle))continue;
    const dx=npc.root.position.x-vehicle.position.x,dz=npc.root.position.z-vehicle.position.z;
    const c=Math.cos(vehicle.rotation.y),s=Math.sin(vehicle.rotation.y);
    const lx=dx*c+dz*s,lz=-dx*s+dz*c;
-   const px=THREE.MathUtils.clamp(lx,-1.48,1.48),pz=THREE.MathUtils.clamp(lz,-2.72,2.72);
+   const halfWidth=vehicle===playerCar?2.75:1.48,halfLength=vehicle===playerCar?7.7:2.72;
+   const px=THREE.MathUtils.clamp(lx,-halfWidth,halfWidth),pz=THREE.MathUtils.clamp(lz,-halfLength,halfLength);
    let nx=lx-px,nz=lz-pz,len=Math.hypot(nx,nz);
    if(len<.001){nx=1;nz=0;len=1;}
    const push=.86/len,outX=lx+nx*push,outZ=lz+nz*push;
@@ -291,17 +296,19 @@ function movePedestrianSafely(npc,x,z){
 }
 function vehicleOverlapsVehicle(position,rotation,otherRoot){
  const dx=otherRoot.position.x-position.x,dz=otherRoot.position.z-position.z;
- if(dx*dx+dz*dz>100)return false;
+ if(dx*dx+dz*dz>400)return false;
  const cA=Math.cos(rotation),sA=Math.sin(rotation),cB=Math.cos(otherRoot.rotation.y),sB=Math.sin(otherRoot.rotation.y);
  const axes=[[cA,-sA],[sA,cA],[cB,-sB],[sB,cB]];
+ const isRV_A=position===playerCar.position,isRV_B=otherRoot===playerCar;
+ const wA=isRV_A?2.85:1.58,lA=isRV_A?7.85:2.88,wB=isRV_B?2.85:1.58,lB=isRV_B?7.85:2.88;
  for(const [ax,az] of axes){
-  const radiusA=1.58*Math.abs(ax*cA-az*sA)+2.88*Math.abs(ax*sA+az*cA);
-  const radiusB=1.58*Math.abs(ax*cB-az*sB)+2.88*Math.abs(ax*sB+az*cB);
+  const radiusA=wA*Math.abs(ax*cA-az*sA)+lA*Math.abs(ax*sA+az*cA);
+  const radiusB=wB*Math.abs(ax*cB-az*sB)+lB*Math.abs(ax*sB+az*cB);
   if(Math.abs(dx*ax+dz*az)>radiusA+radiusB+.32)return false;
  }
  return true;
 }
-function vehiclePathHitsPedestrian(from,to,rotation){
+function vehiclePathHitsPedestrian(from,to,rotation,vehicleRoot=null){
  const start=from?.isVector3?from:new THREE.Vector3(Number(from?.x)||0,0,Number(from?.z)||0);
  const end=to?.isVector3?to:new THREE.Vector3(Number(to?.x)||0,0,Number(to?.z)||0);
  const distance=Math.hypot(end.x-start.x,end.z-start.z);
@@ -309,16 +316,16 @@ function vehiclePathHitsPedestrian(from,to,rotation){
  for(let step=0;step<=steps;step++){
   const sample=start.clone().lerp(end,step/steps);
   for(const pedestrian of allPedestrianActors){
-   if(pedestrian.root.visible&&vehicleOverlapsPedestrian(sample,rotation,pedestrian))return true;
+   if(pedestrian.root.visible&&vehicleOverlapsPedestrian(sample,rotation,pedestrian,vehicleRoot))return true;
   }
  }
  return false;
 }
 function vehicleCollisionAt(position,rotation,ignoreRoot=null){
  if(!movingVehicleRoots.includes(ignoreRoot)&&(position.x< -239||position.x>239||position.z< -229||position.z>229))return 'city boundary';
- for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,b))return 'building';
+ for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,b,ignoreRoot))return 'building';
  for(const other of vehicleRegistry){if(other===ignoreRoot)continue;if(vehicleOverlapsVehicle(position,rotation,other))return 'another vehicle';}
- for(const pedestrian of allPedestrianActors)if(pedestrian.root.visible&&vehicleOverlapsPedestrian(position,rotation,pedestrian))return 'pedestrian';
+ for(const pedestrian of allPedestrianActors)if(pedestrian.root.visible&&vehicleOverlapsPedestrian(position,rotation,pedestrian,ignoreRoot))return 'pedestrian';
  return '';
 }
 
@@ -413,6 +420,38 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,38),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
+
+ // Remote desert camp: physical scenery and an animated, fictional work area.
+ const desertCamp=new THREE.Group();desertCamp.position.set(-190,0,165);scene.add(desertCamp);
+ const campDirt=mat(0x8e795d),campDark=mat(0x45433b),campMetal=mat(0x626b68),campCanvas=mat(0x6e7569),campWood=mat(0x79634a);
+ box(desertCamp,0,.015,0,66,.035,52,campDirt,false);
+ box(desertCamp,-12,.025,-15,8,.025,46,mat(0x77664f),false);
+ box(desertCamp,-20,.03,-8,1.2,.03,28,mat(0x9b8667),false);
+ box(desertCamp,-4,.03,-8,1.2,.03,28,mat(0x9b8667),false);
+ // Canvas shade and support poles.
+ for(const x of [-2,9])for(const z of [-5,5])cylinder(desertCamp,x,2.5,z,.09,.09,5,campMetal,8);
+ box(desertCamp,3,5,0,14,.18,12,campCanvas,false);
+ box(desertCamp,3,4.88,0,14,.06,12,mat(0x8d927d),false);
+ // Workbench and stylized, sealed fictional apparatus (no real-world process).
+ box(desertCamp,3.4,1.15,1.2,5.8,.22,2.1,campWood);
+ for(const x of [.9,5.9])for(const z of [.55,1.85])box(desertCamp,x,.52,z,.16,1.05,.16,campDark);
+ const cookMachine=new THREE.Group();cookMachine.position.set(3.5,1.35,1.2);desertCamp.add(cookMachine);
+ box(cookMachine,0,.45,0,1.8,.95,1.25,campMetal);
+ box(cookMachine,0,1.02,.02,1.45,.12,1.02,campDark);
+ const cookGlow=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),new THREE.MeshBasicMaterial({color:0x58c7d5,transparent:true,opacity:.18}));
+ cookGlow.position.set(0,1.2,.05);cookMachine.add(cookGlow);
+ for(let i=0;i<3;i++){const dial=new THREE.Mesh(new THREE.CircleGeometry(.12,16),new THREE.MeshBasicMaterial({color:i===1?0x9eae79:0x8b9b9a}));dial.position.set(-.48+i*.48,.55,.64);cookMachine.add(dial);}
+ const sealedPackage=box(desertCamp,6.8,.55,2.3,1.05,1.05,1.05,mat(0x9b8a6b));sealedPackage.visible=false;
+ for(const [x,z] of [[-4,3],[10,3],[-5,-4],[10,-4]])box(desertCamp,x,.62,z,1.8,1.2,1.8,campWood);
+ for(const [x,z] of [[-7,6],[12,7]]){cylinder(desertCamp,x,.72,z,.55,.55,1.45,campMetal,12);cylinder(desertCamp,x,.12,z,.58,.58,.12,campDark,12);}
+ const campChair=new THREE.Group();campChair.position.set(8,0,5);desertCamp.add(campChair);
+ box(campChair,0,.72,0,1.2,.12,1,campCanvas);box(campChair,0,.38,.38,1.15,.1,.12,campMetal);
+ for(const x of [-.5,.5])for(const z of [-.35,.35])box(campChair,x,.34,z,.07,.68,.07,campMetal);
+ const campLight=new THREE.PointLight(0xd4b77b,0,18);campLight.position.set(3,4.5,0);desertCamp.add(campLight);
+ const vaporPuffs=[];
+ for(let i=0;i<4;i++){const puff=new THREE.Mesh(new THREE.SphereGeometry(.22+i*.035,10,8),new THREE.MeshBasicMaterial({color:0xc9d2cb,transparent:true,opacity:0}));puff.position.set(3.5,2.2+i*.38,1.2);desertCamp.add(puff);vaporPuffs.push(puff);}
+ worldLabel('DESERT COOK SITE',-187,147,'#d7c29a');
+
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],cookState=['idle','cooking','ready','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
 let evidenceCollected=Array.isArray(saved.evidenceCollected)?saved.evidenceCollected:[],salvageCollected=Array.isArray(saved.salvageCollected)?saved.salvageCollected:[],deliveryState=['available','active','complete','failed'].includes(saved.deliveryState)?saved.deliveryState:'available',deliveryDeadline=Number.isFinite(saved.deliveryDeadline)?saved.deliveryDeadline:0,deliveryTargetIndex=Number.isFinite(saved.deliveryTargetIndex)?saved.deliveryTargetIndex:0;
 function makeActivityItem(id,label,x,z,color,kind){
@@ -453,19 +492,21 @@ const salvageItems=[
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
 if(!driving&&Math.abs(playerCar.position.z)<10)playerCar.position.z=playerCar.position.z<0?-13:13;
 if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
- playerCar.position.set(-6,0,13);playerCar.rotation.y=0;
+ playerCar.position.set(-190,0,165);playerCar.rotation.y=0;
  if(driving)player.position.copy(playerCar.position);
- showToast('Vehicle repositioned to a safe road after loading.');
+ showToast('Vehicle repositioned to the desert camp.');
 }
+if(saved.rvCampVersion!==1){driving=false;player.visible=true;playerCar.position.set(-190,0,165);playerCar.rotation.y=0;player.position.set(-186,0,165);player.rotation.y=-Math.PI/2;yaw=-Math.PI/2;saveGame();}
+sealedPackage.visible=cookState==='ready';
 function currentObjective(){
- if(cookState==='idle'||cookState==='cooking')return {name:'THE DESERT RV · COOK',pos:playerCar.position};
+ if(cookState==='idle'||cookState==='cooking')return {name:'THE DESERT COOK SITE',pos:playerCar.position};
  if(cookState==='ready')return {name:'THE MOTEL · MAKE THE SALE',pos:locations[5].pos};
  if(raceActive)return {name:'TIME TRIAL CHECKPOINT',pos:raceCheckpoints[raceIndex]};
  if(deliveryState==='active')return deliveryTargets[deliveryTargetIndex]||locations[1];
@@ -566,7 +607,7 @@ function keepCameraOutsideWalls(origin,desired){
  return origin.clone().addScaledVector(dir,Math.max(2.35,nearest-.42));
 }
 
-let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,engineHarmonicGain=null,roadNoiseGain=null,soundEnabled=false,footstepClock=0,nextBirdAt=0,noiseBuffer=null;
+let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,engineHarmonicGain=null,roadNoiseGain=null,soundEnabled=localStorage.getItem('abq-sound-enabled')==='true',footstepClock=0,nextBirdAt=0,noiseBuffer=null;
 function makeNoiseBuffer(){
  const buffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate),data=buffer.getChannelData(0);
  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.5;
@@ -608,14 +649,16 @@ function setupGameAudio(){
 function setGameAudioEnabled(enabled){
  if(!audioContext||!audioMaster)return;
  soundEnabled=enabled;
+ try{localStorage.setItem('abq-sound-enabled',String(soundEnabled));}catch{}
  audioMaster.gain.setTargetAtTime(soundEnabled?.68:0,audioContext.currentTime,.1);
  $('sound-toggle').textContent=soundEnabled?'SOUND ON':'SOUND OFF';
  $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled));
 }
 function unlockGameAudio(){
- if(!setupGameAudio())return;
- if(audioContext.state!=='running')audioContext.resume().then(()=>setGameAudioEnabled(true)).catch(()=>{});
- else if(!soundEnabled)setGameAudioEnabled(true);
+ // A muted preference is authoritative: movement, taps and key presses never unmute.
+ if(!soundEnabled||!setupGameAudio())return;
+ if(audioContext.state!=='running')audioContext.resume().then(()=>{if(soundEnabled)setGameAudioEnabled(true);}).catch(()=>{});
+ else setGameAudioEnabled(true);
 }
 async function toggleGameAudio(){
  if(!setupGameAudio())return;
@@ -623,6 +666,8 @@ async function toggleGameAudio(){
  setGameAudioEnabled(!soundEnabled);
  showToast(soundEnabled?'Albuquerque ambience enabled.':'Sound muted.');
 }
+$('sound-toggle').textContent=soundEnabled?'SOUND ON':'SOUND OFF';
+$('sound-toggle').setAttribute('aria-pressed',String(soundEnabled));
 $('sound-toggle').addEventListener('click',toggleGameAudio);
 renderer.domElement.addEventListener('pointerdown',unlockGameAudio,{passive:true});
 $('mobile-joystick').addEventListener('pointerdown',unlockGameAudio,{passive:true});
@@ -679,7 +724,7 @@ function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
  if(cookState==='idle'||cookState==='cooking'||cookState==='ready'){
   $('mission-title').textContent=cookState==='ready'?'TAKE THE RV TO THE MOTEL BUYER':'THE DESERT RV · FIRST COOK';
-  $('mission-copy').textContent=cookState==='ready'?'The batch is sealed. Drive the Winnebago to the Route 66 Motel and meet the buyer.':cookState==='cooking'?'Stay beside the RV while the abstract cook timer runs. No real-world procedure is shown.':'Find the classic Winnebago, park nearby and start the cook sequence.';
+  $('mission-copy').textContent=cookState==='ready'?'The batch is sealed. Drive the Winnebago to the Route 66 Motel and meet the buyer.':cookState==='cooking'?'Stay beside the RV while the abstract cook timer runs. No real-world procedure is shown.':'The Winnebago is parked at a remote desert camp. Walk over to the work area and start the cook sequence.';
   const p=document.querySelector('.objective-progress i');if(p)p.style.width=cookState==='ready'?'75%':cookState==='cooking'?Math.round(cookProgress*70)+'%':'25%';
   const ch=$('chapter');if(ch)ch.textContent='SIDE STORY · THE RV RUN';
   return;
@@ -725,7 +770,7 @@ function interact(target){
  }
  if(target.type==='rv-sale'){
   openDialogue('MOTEL BUYER','You brought it? Keep this quiet. The buyer checks the sealed package and counts out the cash.',[
-   {label:'MAKE THE SALE · +$2,500',run:()=>{cookState='sold';cash+=2500;showToast('Sale complete · +$2,500. The RV is ready for the next run.');saveGame();updateHUD();}},
+   {label:'SELL FINISHED PRODUCT · +$2,500',run:()=>{cookState='sold';cash+=2500;sealedPackage.visible=false;showToast('Buyer paid · sale complete · +$2,500.');saveGame();updateHUD();}},
    {label:'WALK AWAY',run:()=>{}}
   ]);return;
  }
@@ -817,8 +862,8 @@ function updateActive(){
  else{
   for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
   const rvDistance=player.position.distanceTo(playerCar.position);
-  if(cookState==='idle'&&rvDistance<7.2&&rvDistance>3.0){best=rvDistance;active={type:'rv-cook',label:'START COOK · RV INTERIOR',pos:playerCar.position,range:7.2};}
-  if(cookState==='cooking'&&rvDistance<7.2){best=rvDistance;active={type:'rv-cook',label:'COOKING · STAY NEAR THE RV',pos:playerCar.position,range:7.2};}
+  if(cookState==='idle'&&rvDistance<7.2&&rvDistance>3.0){best=rvDistance;active={type:'rv-cook',label:'START COOK · DESERT WORK AREA',pos:playerCar.position,range:7.2};}
+  if(cookState==='cooking'&&rvDistance<7.2){best=rvDistance;active={type:'rv-cook',label:'COOKING · WORK AREA ACTIVE',pos:playerCar.position,range:7.2};}
   if(cookState==='ready'){const d=player.position.distanceTo(motelClerkNPC.root.position);if(d<5.8&&d<best){best=d;active={type:'rv-sale',label:'SELL THE FINISHED PRODUCT',pos:motelClerkNPC.root.position,range:5.8};}}
   if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
   for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
@@ -999,7 +1044,7 @@ function animate(){
   if(cookState==='cooking'&&!driving&&player.position.distanceTo(playerCar.position)<7.2){
    cookProgress=Math.min(1,cookProgress+dt/10);
    const bar=document.querySelector('.objective-progress i');if(bar)bar.style.width=Math.round(cookProgress*70)+'%';
-   if(cookProgress>=1){cookState='ready';showToast('Cook complete · sealed package ready. Take it to the Route 66 Motel.');saveGame();updateHUD();}
+   if(cookProgress>=1){cookState='ready';sealedPackage.visible=true;showToast('Production complete · no payment yet. Take the finished package to the Route 66 Motel and sell it.');saveGame();updateHUD();}
   }
   trafficCars.forEach(t=>{
    const start=t.root.position.clone();
@@ -1050,7 +1095,7 @@ function animate(){
    let collision='';
    for(let step=1;step<=steps;step++){
     const candidate=oldPosition.clone().lerp(next,step/steps);
-    collision=vehiclePathHitsPedestrian(playerCar.position,candidate,playerCar.rotation.y)?'pedestrian':vehicleCollisionAt(candidate,playerCar.rotation.y,playerCar);
+    collision=vehiclePathHitsPedestrian(playerCar.position,candidate,playerCar.rotation.y,playerCar)?'pedestrian':vehicleCollisionAt(candidate,playerCar.rotation.y,playerCar);
     if(collision)break;
     playerCar.position.copy(candidate);
    }
@@ -1078,7 +1123,7 @@ function animate(){
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
-   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<4.5);
+   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?9.1:4.5));
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
    if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
@@ -1104,6 +1149,8 @@ function animate(){
   }
  }
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.008)*.34:0;
+  const cookingNow=cookState==='cooking';cookGlow.material.opacity=cookingNow?.72:.18;cookGlow.scale.setScalar(cookingNow?1.08+Math.sin(animTime*.012)*.12:1);campLight.intensity=cookingNow?1.35:0;
+  vaporPuffs.forEach((p,i)=>{p.material.opacity=cookingNow?.22:0;p.position.y=2.1+i*.34+(cookingNow?((animTime*.00055+i*.23)%1)*.75:0);p.scale.setScalar(cookingNow?(.75+Math.sin(animTime*.004+i)*.25):.01);});
  for(const item of [...evidenceItems,...salvageItems,deliveryItem,raceStartItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
  raceGates.forEach((gate,i)=>{if(gate.root.visible)gate.ring.rotation.z+=dt*(i%2?-.65:.65);});
   playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
