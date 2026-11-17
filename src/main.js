@@ -695,7 +695,7 @@ function resetJoystick(){
 }
 function moveJoystick(e){
  const rect=joystick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
- const max=Math.min(rect.width,rect.height)*.34,dx=e.clientX-cx,dy=e.clientY-cy,len=Math.hypot(dx,dy),scale=len>max?max/len:1;
+ const max=Math.min(rect.width,rect.height)*.25,dx=e.clientX-cx,dy=e.clientY-cy,len=Math.hypot(dx,dy),scale=len>max?max/len:1;
  const x=dx*scale,y=dy*scale;
  joystickX=THREE.MathUtils.clamp(x/max,-1,1);joystickY=THREE.MathUtils.clamp(y/max,-1,1);
  joystickKnob.style.transform='translate(calc(-50% + '+x+'px),calc(-50% + '+y+'px))';
