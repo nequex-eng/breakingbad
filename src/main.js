@@ -1161,23 +1161,6 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
 updateHUD();saveGame();drawMiniMap();animate();
 gameReady=true;clearTimeout(startupWatchdog);
 setTimeout(()=>$('loading').classList.add('gone'),700);
- + cash.toLocaleString('en-US');
- if(cookState==='idle'||cookState==='cooking'||cookState==='ready'){
-  $('mission-title').textContent=cookState==='ready'?'TAKE THE RV TO THE MOTEL BUYER':'THE DESERT RV · FIRST COOK';
-  $('mission-copy').textContent=cookState==='ready'?'The batch is sealed. Drive the Winnebago to the Route 66 Motel and meet the buyer.':cookState==='cooking'?'Stay beside the RV while the abstract cook timer runs. No real-world procedure is shown.':'Find the classic Winnebago, park nearby and start the cook sequence.';
-  const p=document.querySelector('.objective-progress i');if(p)p.style.width=cookState==='ready'?'75%':cookState==='cooking'?Math.round(cookProgress*70)+'%':'25%';
-  const ch=$('chapter');if(ch)ch.textContent='SIDE STORY · THE RV RUN';
-  return;
- }
- const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','THE MISSING DRIVER','THE DINER WITNESS','A DRIVER WHO REMEMBERS','ROOM SIX','THE LEDGER','BACK TO JESSE','A NEW ARRANGEMENT','THE NIGHT DELIVERY','THE COURIER','THE WAREHOUSE LIST','THE MOTEL ROOM','THE FINAL HANDOFF','CHAPTER FIVE COMPLETE','FOUR PIECES OF PROOF','THE WAREHOUSE FILE','THE LAST DECISION','CHAPTER SIX COMPLETE'];
- const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner. Someone there may know more than they are saying.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','Jesse has heard from a driver who vanished after a late-night delivery. Start at the car wash.','Find the waitress who saw the delivery van leave the diner.','Track down the driver at the gas station. He knows where the van went.','Go to the Route 66 Motel. Someone kept a room key for the driver.','The room key leads to a ledger hidden at the desert warehouse.','Take the ledger back to Jesse at A-1 Car Wash.','Jesse has another job. A night delivery went missing on the east side.','Find the night driver at the gas station before the police do.','A courier is waiting at the diner with a route and a warning.','The warehouse contact has the shipment list. Get the truth.','Meet the motel manager. The missing cargo was moved through room six.','Return to Jesse. This time, decide what happens to the shipment.','The fifth chapter is complete. A new investigation is available.','Search the streets for four physical pieces of evidence. They are visible in the world; no conversation required.','Bring all four pieces of evidence to the warehouse archivist.','Return to Jesse and decide what to do with the evidence.','Chapter Six is complete. Albuquerque remains open for side activities.'];
- const step=Math.min(missionStep,titles.length-1);
- $('mission-title').textContent=titles[step];$('mission-copy').textContent=copies[step];
- const progress=document.querySelector('.objective-progress i');
- if(progress)progress.style.width=['5%','10%','15%','20%','25%','30%','35%','40%','45%','50%','55%','60%','65%','70%','75%','80%','84%','88%','92%','96%','99%','100%','82%','92%','97%','100%'][step]||'100%';
- const chapter=$('chapter');if(chapter)chapter.textContent=missionStep<=8?'CHAPTER 01 · THE FIRST MOVE':missionStep<=14?'CHAPTER 04 · THE MISSING DRIVER':missionStep<=20?'CHAPTER 05 · THE NIGHT DELIVERY':missionStep<=24?'CHAPTER 06 · THE EVIDENCE TRAIL':'CHAPTER 06 · COMPLETE';
- if(deliveryState==='active'){$('mission-title').textContent='TIME-SENSITIVE DELIVERY';$('mission-copy').textContent='A package is in your care. Reach the marked drop point before the timer expires.';}
-}
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
  const actions=$('dialogue-actions'); actions.innerHTML='';
