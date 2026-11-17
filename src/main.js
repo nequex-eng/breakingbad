@@ -66,6 +66,20 @@ box(scene,93,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 box(scene,107,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 for(let z=-44;z<=-8;z+=18)box(scene,100,.03,z,.14,.03,7,materials.yellow,false);
 box(scene,100,.012,-50,24,.025,10,materials.asphalt,false);
+// Route 66 Motel approach and parking apron.
+box(scene,-145,.006,-34,12,.025,68,materials.asphalt,false);
+box(scene,-152,.012,-34,1.6,.035,68,materials.sidewalk,false);
+box(scene,-138,.012,-34,1.6,.035,68,materials.sidewalk,false);
+for(let z=-62;z<=-8;z+=18)box(scene,-145,.03,z,.14,.03,7,materials.yellow,false);
+const motel=new THREE.Group();motel.position.set(-145,0,-76);scene.add(motel);
+box(motel,0,3.5,0,56,7,13,materials.cream);box(motel,0,7.1,0,57,.4,14,materials.dark);
+box(motel,0,.14,9,60,.2,8,materials.asphalt,false);
+for(const x of [-23,-15,-7,1,9,17,25]){
+ box(motel,x,4.1,6.62,4.3,2.4,.18,materials.glass);
+ box(motel,x,2.55,6.72,2.3,1.05,.22,materials.rust);
+ box(motel,x,5.55,6.75,4.5,.12,.2,materials.white);
+}
+box(motel,-28,2.2,6.65,1.2,4.4,.25,materials.dark);box(motel,28,2.2,6.65,1.2,4.4,.25,materials.dark);
 
 // Distant mesa silhouettes
 for(let i=0;i<13;i++){
@@ -210,6 +224,7 @@ const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.P
 const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation.y=Math.PI;
 const policeNPC=makeNPC(96,30,0x344e6b,0x242b32);policeNPC.root.rotation.y=Math.PI;
 const gasContactNPC=makeNPC(73,27,0x57445e,0x30323c,0x9d7358);gasContactNPC.root.rotation.y=Math.PI;
+const motelNPC=makeNPC(-132,-65,0x6d5a48,0x343a43,0xb58b6b);motelNPC.root.rotation.y=Math.PI;
 const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
 ambientNPCs.forEach((npc,i)=>{npc.home=npc.root.position.clone();npc.wanderPhase=i*2.15;});
 
@@ -218,7 +233,8 @@ const locations=[
  {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,17),range:15,type:'talk'},
  {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-50),range:15,type:'warehouse'},
  {name:'GAS STATION',label:'THE GAS STATION',pos:new THREE.Vector3(78,0,22),range:14,type:'gas'},
- {name:'POLICE PATROL',label:'TALK TO THE OFFICER',pos:new THREE.Vector3(96,0,30),range:9,type:'police'}
+ {name:'POLICE PATROL',label:'TALK TO THE OFFICER',pos:new THREE.Vector3(96,0,30),range:9,type:'police'},
+ {name:'ROUTE 66 MOTEL',label:'THE ROUTE 66 MOTEL',pos:new THREE.Vector3(-132,0,-65),range:13,type:'motel'}
 ];
 function worldLabel(text,x,z,color='#e8d9b8'){
  const c=document.createElement('canvas');c.width=512;c.height=112;const ctx=c.getContext('2d');
@@ -227,14 +243,14 @@ function worldLabel(text,x,z,color='#e8d9b8'){
  const tex=new THREE.CanvasTexture(c);const mesh=new THREE.Mesh(new THREE.PlaneGeometry(13,2.8),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
  mesh.position.set(x,11.5,z);scene.add(mesh);return mesh;
 }
-const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22),worldLabel('POLICE PATROL',96,30,'#9bb9d9')];
+const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,localsTalked,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
-function currentObjective(){if(customWaypoint)return {name:'CUSTOM WAYPOINT',pos:customWaypoint};return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:null;}
+function currentObjective(){if(customWaypoint)return {name:'CUSTOM WAYPOINT',pos:customWaypoint};return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:missionStep===6?locations[1]:missionStep===7?locations[5]:missionStep===8?locations[0]:null;}
 const objectiveBeacon=new THREE.Group();
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
 beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
@@ -294,12 +310,12 @@ function updateHUD(){
  updateHealthUI();
  trust=THREE.MathUtils.clamp(trust,0,100);heat=THREE.MathUtils.clamp(heat,0,100);
  $('stats').textContent='TRUST '+Math.round(trust)+' · HEAT '+Math.round(heat)+(heat>=30?' · POLICE ALERT':'');
- const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','CHAPTER TWO COMPLETE'];
- const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','You reached a new understanding. Explore Albuquerque, take a shift, or recover at the diner.'];
- const step=Math.min(missionStep,6);
+ const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','CHAPTER THREE COMPLETE'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','The third chapter is complete. Explore Albuquerque and live with the consequences.'];
+ const step=Math.min(missionStep,9);
  $('mission-title').textContent=titles[step];
  $('mission-copy').textContent=copies[step];
- const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','24%','42%','60%','76%','90%','100%'][step];
+ const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','18%','30%','42%','56%','70%','78%','88%','96%','100%'][step];
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
@@ -332,6 +348,10 @@ function interact(target){
    {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
    {label:'“Forget it. Not today.”',run:()=>{heat=Math.min(100,heat+2);showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
   ]);
+  else if(missionStep===8)openDialogue('JESSE','You came back. Tell me exactly what was in the envelope. And do not leave anything out.',[
+   {label:'Show him the evidence (trust +14, heat +5, +$1,300)',run:()=>{trust=Math.min(100,trust+14);heat=Math.min(100,heat+5);cash+=1300;missionStep=9;showToast('Jesse understands. +$1,300. Chapter three complete.');saveGame();updateHUD();}},
+   {label:'Keep the details to yourself (trust +3, heat -4, +$500)',run:()=>{trust=Math.min(100,trust+3);heat=Math.max(0,heat-4);cash+=500;missionStep=9;showToast('You keep the details quiet. +$500.');saveGame();updateHUD();}}
+  ]);
   else if(!carWashShiftDone)openDialogue('CAR WASH MANAGER','The afternoon rush is over, but there is still work to do. A short shift would put some cash in your pocket.',[
    {label:'Work the short shift (+$300, heat -2)',run:()=>{cash+=300;heat=Math.max(0,heat-2);carWashShiftDone=true;showToast('Shift complete. +$300.');saveGame();updateHUD();}},
    {label:'Ask Jesse how things are going',run:()=>{showToast('Jesse says to keep your head down.');}}
@@ -339,7 +359,8 @@ function interact(target){
   else openDialogue('CAR WASH MANAGER','You already worked your shift today. The wash is running smoothly.',[{label:'Leave',run:()=>{}}]);
  }else if(target.type==='talk'){
   const dinerChoices=[];
-  if(missionStep===1)dinerChoices.push({label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
+  if(missionStep===6)dinerChoices.push({label:'Listen to the voicemail (start the next lead)',run:()=>{missionStep=7;trust=Math.min(100,trust+2);showToast('A message points to the Route 66 Motel.');saveGame();updateHUD();}});
+  else if(missionStep===1)dinerChoices.push({label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
   else if(missionStep===3)dinerChoices.push({label:'Hand over the sealed envelope (complete delivery)',run:()=>{missionStep=4;cash+=900;heat=Math.max(0,heat-3);trust=Math.min(100,trust+5);showToast('Delivery complete. +$900 · A contact is waiting at the gas station.');saveGame();updateHUD();}});
   else if(missionStep===0)dinerChoices.push({label:'You should speak to Jesse at the car wash first.',run:()=>{showToast('Jesse is waiting at the car wash.');}});
   dinerChoices.push({label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}});
@@ -351,6 +372,12 @@ function interact(target){
   gasChoices.push({label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}});
   gasChoices.push({label:'Rest and recover (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}});
   openDialogue(missionStep===4?'THE STRANGER':'GAS STATION',missionStep===4?'You came. Keep your voice down. I have a name, a place, and a reason this needs to stay quiet.':'A quiet stop beside the highway. The attendant offers first aid and a chance to regroup.',gasChoices);
+ }else if(target.type==='motel'){
+  if(missionStep===7)openDialogue('MOTEL CONTACT','You are late. The courier left an envelope under the ice machine. There are two names inside. One of them is going to make trouble.',[
+   {label:'Open the envelope (+$700, trust +8, heat +6)',run:()=>{cash+=700;trust=Math.min(100,trust+8);heat=Math.min(100,heat+6);missionStep=8;showToast('You found the names. Take the evidence back to Jesse.');saveGame();updateHUD();}},
+   {label:'Leave it sealed (+$200, trust -3, heat -4)',run:()=>{cash+=200;trust=Math.max(0,trust-3);heat=Math.max(0,heat-4);missionStep=8;showToast('You leave the envelope sealed. Return to the car wash.');saveGame();updateHUD();}}
+  ]);
+  else openDialogue('MOTEL MANAGER','The motel is quiet. Keep the noise down and stay out of the parking spaces.',[{label:'Leave',run:()=>{}}]);
  }else if(target.type==='police'){
   if(policeHelpUsed)openDialogue('OFFICER','I already gave you a warning. Keep moving and stay out of trouble.',[{label:'Walk away',run:()=>{}}]);
   else if(heat>=30)openDialogue('OFFICER','We have heard a few things about you. You can cooperate, or make this more difficult.',[
@@ -397,6 +424,7 @@ function updateActive(){
  if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
  if(player.position.distanceTo(locations[3].pos)<35)zone='GAS STATION';
  if(player.position.distanceTo(locations[4].pos)<24)zone='POLICE PATROL';
+ if(player.position.distanceTo(locations[5].pos)<32)zone='ROUTE 66 MOTEL';
  $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';updateObjectiveDistance();drawMiniMap();
 }
 function drawMiniMap(){
@@ -417,11 +445,11 @@ function drawWorldMap(){
  for(let x=-250;x<=250;x+=25){const q=p(x,0);ctx.beginPath();ctx.moveTo(q.x,35);ctx.lineTo(q.x,h-35);ctx.stroke();}
  for(let z=-250;z<=250;z+=25){const q=p(0,z);ctx.beginPath();ctx.moveTo(35,q.y);ctx.lineTo(w-35,q.y);ctx.stroke();}
  ctx.lineCap='square';ctx.strokeStyle='#70736b';ctx.lineWidth=19*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(-260,0)));ctx.lineTo(...Object.values(p(260,0)));ctx.stroke();
- ctx.strokeStyle='#686c64';ctx.lineWidth=15*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(100,0)));ctx.lineTo(...Object.values(p(100,-52)));ctx.stroke();
- ctx.strokeStyle='#d0b36a';ctx.lineWidth=2;ctx.setLineDash([9,10]);ctx.beginPath();ctx.moveTo(...Object.values(p(-250,0)));ctx.lineTo(...Object.values(p(250,0)));ctx.moveTo(...Object.values(p(100,-4)));ctx.lineTo(...Object.values(p(100,-50)));ctx.stroke();ctx.setLineDash([]);
+ ctx.strokeStyle='#686c64';ctx.lineWidth=15*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(100,0)));ctx.lineTo(...Object.values(p(100,-52)));ctx.moveTo(...Object.values(p(-145,0)));ctx.lineTo(...Object.values(p(-145,-68)));ctx.stroke();
+ ctx.strokeStyle='#d0b36a';ctx.lineWidth=2;ctx.setLineDash([9,10]);ctx.beginPath();ctx.moveTo(...Object.values(p(-250,0)));ctx.lineTo(...Object.values(p(250,0)));ctx.moveTo(...Object.values(p(100,-4)));ctx.lineTo(...Object.values(p(100,-50)));ctx.moveTo(...Object.values(p(-145,-4)));ctx.lineTo(...Object.values(p(-145,-66)));ctx.stroke();ctx.setLineDash([]);
  const block=(x,z,bw,bd,color)=>{const q=p(x,z);ctx.fillStyle=color;ctx.fillRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);ctx.strokeStyle='rgba(227,211,169,.35)';ctx.lineWidth=1;ctx.strokeRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);};
  [[-30,-38,14,11],[-58,-38,12,10],[8,-44,12,10],[42,-42,14,11],[-70,38,11,9],[70,42,14,10]].forEach(v=>block(v[0],v[1],v[2],v[3],'#887f6e'));
- block(36,28,30,19,'#b6a589');block(-82,7,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,8,21,14,'#b9a77d');
+ block(36,28,30,19,'#b6a589');block(-82,7,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,8,21,14,'#b9a77d');block(-145,-76,57,14,'#b9ad91');
  ctx.font='bold 15px monospace';ctx.textAlign='left';ctx.fillStyle='#e0d1aa';
  for(const l of locations){const q=p(l.pos.x,l.pos.z);ctx.fillStyle=l.type==='police'?'#9bb9d9':'#dfc27b';ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e0d1aa';ctx.fillText(l.name,q.x+11,q.y-8);}
  const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
@@ -532,7 +560,7 @@ function animate(){
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
- animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
+ animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
  ambientNPCs.forEach((npc,i)=>{animateNpc(npc);const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;npc.root.position.x=npc.home.x+Math.sin(t)*2.1;npc.root.position.z=npc.home.z+Math.cos(t)*1.15;if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;}});
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
