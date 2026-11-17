@@ -22,6 +22,8 @@ An unofficial, non-commercial browser-game prototype inspired by the television 
 - **Esc**: close map or dialogue
 - **Drag**: rotate the camera
 - On mobile, use the directional pad and E button; tap the minimap to expand it
+- Tap/click a point on the full city map to set a custom navigation pin; use **CLEAR PIN** to return to the story objective
+- Optional original ambient wind, footsteps and engine sound can be toggled with **SOUND ON/OFF**
 
 ## Development
 
