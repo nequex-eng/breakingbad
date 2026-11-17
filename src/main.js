@@ -195,7 +195,7 @@ function car(x,z,color,rotation=0){
  }
  return g;
 }
-const playerCar=car(-6,8,0x8d8d86,0); car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
+const playerCar=car(-6,13,0x8d8d86,0); car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
  {root:car(-210,-4,0x87918d,Math.PI/2),direction:1,speed:12},
@@ -356,8 +356,9 @@ function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missi
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
+if(!driving&&Math.abs(playerCar.position.z)<10)playerCar.position.z=playerCar.position.z<0?-13:13;
 if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
- playerCar.position.set(-6,0,8);playerCar.rotation.y=0;
+ playerCar.position.set(-6,0,13);playerCar.rotation.y=0;
  if(driving)player.position.copy(playerCar.position);
  showToast('Vehicle repositioned to a safe road after loading.');
 }
