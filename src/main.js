@@ -3,6 +3,19 @@ import * as THREE from 'three';
 
 const app = document.querySelector('#app');
 const $ = (id) => document.getElementById(id);
+let gameReady=false;
+function showStartupError(message){
+ const loading=$('loading');if(!loading)return;
+ loading.replaceChildren();
+ const mark=document.createElement('div');mark.className='loader-mark';mark.textContent='ABQ';
+ const title=document.createElement('div');title.textContent='THE CITY COULD NOT LOAD';
+ const detail=document.createElement('p');detail.className='loading-error';detail.textContent=String(message||'Unknown startup error').slice(0,180);
+ const retry=document.createElement('button');retry.type='button';retry.textContent='RELOAD';retry.onclick=()=>location.reload();
+ loading.append(mark,title,detail,retry);
+}
+window.addEventListener('error',event=>{if(!gameReady)showStartupError(event.message||'A graphics error occurred.');});
+window.addEventListener('unhandledrejection',event=>{if(!gameReady)showStartupError(event.reason?.message||event.reason||'A startup task failed.');});
+const startupWatchdog=setTimeout(()=>{if(!gameReady)showStartupError('The 3D world is taking too long to start. Check the connection and reload.');},12000);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb9a18a);
 scene.fog = new THREE.FogExp2(0xb9a18a, 0.0068);
@@ -268,6 +281,43 @@ const keys={};
 let yaw=Math.PI, pitch=.25, dragging=false, lastX=0,lastY=0;
 const cameraTarget=new THREE.Vector3();
 
+// Keep the follow camera outside the main building shells instead of letting it clip through walls.
+const cameraBlockers=[
+ {x:-30,z:-38,halfX:6.9,halfZ:5.2,height:4.8},
+ {x:-58,z:-38,halfX:6.2,halfZ:4.7,height:4.8},
+ {x:8,z:-44,halfX:6.2,halfZ:4.7,height:4.8},
+ {x:42,z:-42,halfX:6.9,halfZ:5.2,height:4.8},
+ {x:-70,z:38,halfX:5.8,halfZ:4.4,height:4.2},
+ {x:70,z:42,halfX:6.9,halfZ:5.2,height:4.8},
+ {x:36,z:28,halfX:14.7,halfZ:8.9,height:6.2},
+ {x:-82,z:7,halfX:12,halfZ:7.2,height:5.6},
+ {x:100,z:-70,halfX:19,halfZ:15,height:10.5},
+ {x:78,z:8,halfX:9.5,halfZ:6.2,height:4.8},
+ {x:-145,z:-76,halfX:28,halfZ:6.8,height:7.8}
+];
+function keepCameraOutsideWalls(origin,desired){
+ const delta=desired.clone().sub(origin),length=delta.length();
+ if(length<.001)return desired;
+ const dir=delta.multiplyScalar(1/length);
+ let nearest=length;
+ for(const b of cameraBlockers){
+  let lo=0,hi=nearest;
+  const axes=[
+   [origin.x,dir.x,b.x-b.halfX,b.x+b.halfX],
+   [origin.y,dir.y,0,b.height],
+   [origin.z,dir.z,b.z-b.halfZ,b.z+b.halfZ]
+  ];
+  for(const [o,d,min,max] of axes){
+   if(Math.abs(d)<1e-7){if(o<min||o>max){lo=Infinity;break;}continue;}
+   let a=(min-o)/d,c=(max-o)/d;if(a>c)[a,c]=[c,a];
+   lo=Math.max(lo,a);hi=Math.min(hi,c);
+   if(hi<lo)break;
+  }
+  if(lo>0&&lo<nearest&&hi>=lo)nearest=lo;
+ }
+ return origin.clone().addScaledVector(dir,Math.max(2.35,nearest-.42));
+}
+
 let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,soundEnabled=false,footstepClock=0;
 function setupGameAudio(){
  const AudioCtor=window.AudioContext||window.webkitAudioContext;
@@ -482,6 +532,8 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>keys[e.code]=false);
 window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;});
+window.addEventListener('pagehide',saveGame);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){saveGame();Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;}});
 renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
 renderer.domElement.addEventListener('pointerup',()=>dragging=false);
 renderer.domElement.addEventListener('pointermove',e=>{
@@ -491,8 +543,8 @@ renderer.domElement.addEventListener('pointermove',e=>{
 });
 function bindHold(id,code){
  const el=$(id); if(!el)return;
- el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
- ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;try{el.setPointerCapture(e.pointerId);}catch{}});
+ ['pointerup','pointerleave','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
 }
 bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
 $('mobile-interact').onclick=onInteract;
@@ -503,11 +555,12 @@ function resize(){
 }
 window.addEventListener('resize',resize);
 const clock=new THREE.Clock();
-let lastAutoSave=0;
+let lastAutoSave=0,uiRefreshClock=0;
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
  let walkingNow=false;
+ uiRefreshClock+=dt;
  if(!dialogOpen&&!mapOpen){
   crashCooldown=Math.max(0,crashCooldown-dt);
   trafficCars.forEach(t=>{t.root.position.x+=t.direction*t.speed*dt;if(t.root.position.x>265)t.root.position.x=-265;if(t.root.position.x< -265)t.root.position.x=265;});
@@ -554,7 +607,7 @@ function animate(){
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
   }
  }
- updateActive();
+ if(uiRefreshClock>=.12){updateActive();uiRefreshClock=0;}
  if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.42){playFootstep();footstepClock=0;}}else footstepClock=0;
  if(soundEnabled&&audioContext&&engineOsc){engineOsc.frequency.setTargetAtTime(42+Math.abs(driveSpeed)*2.8,audioContext.currentTime,.12);engineGain.gain.setTargetAtTime(driving?.055+Math.min(Math.abs(driveSpeed)/24,.7)*.035:0,audioContext.currentTime,.18);}
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
@@ -568,10 +621,11 @@ function animate(){
  const cameraYaw=driving?playerCar.rotation.y:yaw;
  const offset=driving?new THREE.Vector3(-Math.sin(cameraYaw)*camDist,5.2,-Math.cos(cameraYaw)*camDist):new THREE.Vector3(Math.sin(cameraYaw)*camDist,4.5+pitch*5,Math.cos(cameraYaw)*camDist);
  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
- const desired=cameraTarget.clone().add(offset);
+ const desired=keepCameraOutsideWalls(cameraTarget,cameraTarget.clone().add(offset));
  camera.position.lerp(desired,1-Math.pow(.001,dt));
  camera.lookAt(cameraTarget);landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
  renderer.render(scene,camera);
 }
 updateHUD();saveGame();drawMiniMap();animate();
+gameReady=true;clearTimeout(startupWatchdog);
 setTimeout(()=>$('loading').classList.add('gone'),700);
