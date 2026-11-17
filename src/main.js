@@ -362,6 +362,16 @@ const evidenceItems=[
  makeActivityItem('evidence-warehouse','Shipping tag',130,-70,0x6d756a,'evidence')
 ];
 const deliveryItem=makeActivityItem('courier-package','Courier package',48,42,0x5b7481,'delivery');
+const raceStartItem=makeActivityItem('race-start','Street time trial',45,58,0x9a8050,'race');
+let raceActive=false,raceIndex=0,raceDeadline=0;
+const raceCheckpoints=[new THREE.Vector3(68,0,58),new THREE.Vector3(118,0,25),new THREE.Vector3(165,0,-12),new THREE.Vector3(44,0,42)];
+const raceGates=raceCheckpoints.map((p,i)=>{
+ const g=new THREE.Group();g.position.copy(p);scene.add(g);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(3.1,.18,8,24),new THREE.MeshBasicMaterial({color:i===raceCheckpoints.length-1?0x9fd0a5:0x8fc4d2,emissive:i===raceCheckpoints.length-1?0x183b24:0x10252b}));
+ ring.rotation.x=Math.PI/2;ring.position.y=2.2;g.add(ring);
+ for(const x of [-3.1,3.1])box(g,x,1.1,0,.18,2.2,.18,materials.dark);
+ return {root:g,ring,pos:p};
+});
 for(const item of evidenceItems){item.collected=evidenceCollected.includes(item.id);item.root.visible=missionStep===22&&!item.collected;}
 deliveryItem.root.visible=deliveryState==='available'||deliveryState==='failed';
 const deliveryTargets=[locations[1],locations[3],locations[5],locations[2]];
@@ -384,6 +394,7 @@ if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
  showToast('Vehicle repositioned to a safe road after loading.');
 }
 function currentObjective(){
+ if(raceActive)return {name:'TIME TRIAL CHECKPOINT',pos:raceCheckpoints[raceIndex]};
  if(deliveryState==='active')return deliveryTargets[deliveryTargetIndex]||locations[1];
  if(missionStep===22){const next=evidenceItems.find(item=>!item.collected);return next?{name:next.label,pos:next.pos}:locations[2];}
  if(missionStep>=25){const next=salvageItems.find(item=>!item.collected);if(next)return {name:next.label,pos:next.pos};}
@@ -399,6 +410,7 @@ beaconArrow.position.y=-1.15;beaconArrow.rotation.x=Math.PI;objectiveBeacon.add(
 function updateObjectiveBeacon(time){const target=currentObjective();objectiveBeacon.visible=!!target;if(target){objectiveBeacon.position.set(target.pos.x,7.8+Math.sin(time*.002)*.3,target.pos.z);objectiveBeacon.rotation.y=time*.00045;}}
 function updateObjectiveDistance(){
  const target=currentObjective(),el=$('objective-distance');if(!el)return;
+ if(raceActive){const seconds=Math.max(0,Math.ceil((raceDeadline-Date.now())/1000));el.textContent='STREET TIME TRIAL · '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+' · CHECKPOINT '+(raceIndex+1)+' / '+raceCheckpoints.length;return;}
  if(deliveryState==='active'){const seconds=Math.max(0,Math.ceil((deliveryDeadline-Date.now())/1000));el.textContent='DELIVERY TIMER · '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+' · '+Math.round(player.position.distanceTo(target.pos))+' M';}
  else if(missionStep===22)el.textContent='EVIDENCE COLLECTED · '+evidenceCollected.length+' / 4 · '+(target?Math.round(player.position.distanceTo(target.pos))+' M':'');
  else if(missionStep>=25)el.textContent='CITY SALVAGE · '+salvageCollected.length+' / '+salvageItems.length+' · '+(target?Math.round(player.position.distanceTo(target.pos))+' M':'');
@@ -589,6 +601,11 @@ function interact(target){
  if(!target)return;
  if(target.type==='activity-item'){
   const item=target.item;
+  if(item.kind==='race'){
+   if(raceActive){showToast('A time trial is already active.');return;}
+   raceActive=true;raceIndex=0;raceDeadline=Date.now()+115000;item.root.visible=false;
+   raceGates.forEach(g=>g.root.visible=true);showToast('Street time trial started. Get in your car and hit every gate!');updateHUD();saveGame();return;
+  }
   if(item.kind==='delivery'){
    deliveryState='active';deliveryDeadline=Date.now()+105000;deliveryTargetIndex=(missionStep+1)%deliveryTargets.length;item.root.visible=false;
    showToast('Package collected. Deliver it within 1 minute 45 seconds.');updateHUD();saveGame();return;
@@ -668,7 +685,8 @@ function updateActive(){
   for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
   if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
   if(missionStep===22){for(const item of evidenceItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'COLLECT '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
-  if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
+  if(raceStartItem.root.visible){const d=player.position.distanceTo(raceStartItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:raceStartItem,label:'START STREET TIME TRIAL',pos:raceStartItem.pos,range:5.5};}}
+   if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
   for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
   if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
   else if(player.position.distanceTo(playerCar.position)<4.8){el.classList.add('visible');$('interaction-copy').textContent=' ENTER SEDAN';}
@@ -875,9 +893,18 @@ function animate(){
  if(soundEnabled&&audioContext&&engineOsc){const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);engineOsc.frequency.setTargetAtTime(48+Math.abs(driveSpeed)*3.2,audioContext.currentTime,.12);engineGain.gain.setTargetAtTime(driving?.045+speedRatio*.055:0,audioContext.currentTime,.18);engineHarmonicGain.gain.setTargetAtTime(driving?.012+speedRatio*.025:0,audioContext.currentTime,.18);roadNoiseGain.gain.setTargetAtTime(driving?speedRatio*.055:0,audioContext.currentTime,.2);}
  if(soundEnabled&&audioContext&&audioContext.state==='running'&&audioContext.currentTime>=nextBirdAt){playBirdCall();nextBirdAt=audioContext.currentTime+9+Math.random()*12;}
  if(deliveryState==='active'&&Date.now()>=deliveryDeadline){deliveryState='failed';deliveryDeadline=0;deliveryItem.root.visible=true;showToast('Delivery window expired. The package is back at the car wash.');saveGame();updateHUD();}
+ if(raceActive){
+  if(Date.now()>=raceDeadline){raceActive=false;raceGates.forEach(g=>g.root.visible=false);raceStartItem.root.visible=true;showToast('Time trial expired. Return to the start marker to try again.');}
+  else if(driving&&playerCar.position.distanceTo(raceCheckpoints[raceIndex])<7.5){
+   raceIndex++;
+   if(raceIndex>=raceCheckpoints.length){raceActive=false;raceGates.forEach(g=>g.root.visible=false);raceStartItem.root.visible=true;cash+=1800;showToast('Street time trial complete · +$1,800');updateHUD();saveGame();}
+   else showToast('Checkpoint '+raceIndex+' / '+raceCheckpoints.length+' cleared. Keep moving!');
+  }
+ }
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
- for(const item of [...evidenceItems,...salvageItems,deliveryItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
- playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
+ for(const item of [...evidenceItems,...salvageItems,deliveryItem,raceStartItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
+ raceGates.forEach((gate,i)=>{if(gate.root.visible)gate.ring.rotation.z+=dt*(i%2?-.65:.65);});
+  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
  animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);animateNpc(witnessNPC);animateNpc(courierNPC);animateNpc(driverNPC);animateNpc(motelClerkNPC);animateNpc(warehouseArchivistNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
  ambientNPCs.forEach((npc,i)=>{
