@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#101411" />
     <meta name="description" content="An unofficial, original 3D crime-drama sandbox inspired by the world of Breaking Bad." />
     <title>BREAKING BAD — Albuquerque Stories</title>
@@ -11,7 +14,7 @@
     <div id="app">
       <div id="loading"><div class="loader-mark">ABQ</div><div>ENTERING ALBUQUERQUE</div></div>
       <div id="hud">
-        <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter">CHAPTER 01 <span>·</span> THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong><small id="stats">TRUST 50 · HEAT 8</small></div><div class="drive-info" id="drive-info">ON FOOT</div></header>
+        <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter" id="chapter">CHAPTER 01 · THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong></div><div class="drive-info" id="drive-info">ON FOOT</div></header>
         <section class="mission collapsed" id="mission">
           <button class="mission-toggle" id="mission-toggle" type="button" aria-expanded="false" aria-controls="mission-details">
             <span class="eyebrow">CURRENT OBJECTIVE</span>
