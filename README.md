@@ -4,12 +4,13 @@ An unofficial, non-commercial browser-game prototype inspired by the television 
 
 ## Current game
 
-- Third-person 3D Albuquerque neighborhood with car wash, diner, gas station, desert warehouse, street traffic props and desert access road
+- Third-person 3D Albuquerque neighborhood with car wash, diner, gas station, desert warehouse, Route 66 Motel, access roads and moving traffic
 - Keyboard and touch movement, camera orbit, collision-aware walking and a drivable sedan
 - On-screen objective distance, 3D waypoint beacon, nearby minimap and full-screen city map
-- Story missions with branching dialogue, delivery run, cash, trust and heat
+- Three linked story chapters with branching dialogue, delivery runs, cash, trust and heat
 - Side activities and services: one-time car-wash shift, diner rest and meals, gas-station first aid, and police encounter
-- Character and NPC idle/walking animations
+- Detailed low-poly character faces, wandering residents, NPC idle/walking animations, visible gas-station and motel contacts
+- Traffic collisions, police encounters and a one-time car-wash shift
 - Local save for story progress, player/vehicle positions and choices
 
 ## Controls
