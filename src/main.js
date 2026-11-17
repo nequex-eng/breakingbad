@@ -159,11 +159,11 @@ for(const side of [-1,1]){
 player.position.set(0,0,0);
 
 const economyPoints=[
- {kind:'supply',name:'SEALED CACHE A',label:'COLLECT SEALED A',pos:new THREE.Vector3(76,0,72),resource:'A'},
- {kind:'supply',name:'SEALED CACHE B',label:'COLLECT SEALED B',pos:new THREE.Vector3(116,0,35),resource:'B'},
- {kind:'supply',name:'SEALED CACHE C',label:'COLLECT SEALED C',pos:new THREE.Vector3(145,0,-12),resource:'C'},
- {kind:'lab',name:'WORKSHOP',label:'COOK A CRYSTAL BATCH',pos:new THREE.Vector3(100,0,-47)},
- {kind:'buyer',name:'BACK-ALLEY CONTACT',label:'SELL FINISHED BATCH',pos:new THREE.Vector3(-66,0,28)}
+ {kind:'supply',name:'SEALED CACHE A',label:'COLLECT SEALED A',pos:new THREE.Vector3(76,0,72),resource:'A',range:10},
+ {kind:'supply',name:'SEALED CACHE B',label:'COLLECT SEALED B',pos:new THREE.Vector3(116,0,35),resource:'B',range:10},
+ {kind:'supply',name:'SEALED CACHE C',label:'COLLECT SEALED C',pos:new THREE.Vector3(145,0,-12),resource:'C',range:10},
+ {kind:'lab',name:'WORKSHOP',label:'COOK A CRYSTAL BATCH',pos:new THREE.Vector3(100,0,-47),range:12},
+ {kind:'buyer',name:'BACK-ALLEY CONTACT',label:'SELL FINISHED BATCH',pos:new THREE.Vector3(-66,0,28),range:10}
 ];
 for(const p of economyPoints){
  const beacon=new THREE.Group();beacon.position.copy(p.pos);scene.add(beacon);
