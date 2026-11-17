@@ -60,7 +60,7 @@ const materials = {
   asphalt: mat(0x454541), sand: mat(0xb69c78), sidewalk: mat(0x9b9182),
   white: mat(0xd8d0c2), stucco: mat(0xc7b69b), cream: mat(0xe0d0b2),
   rust: mat(0x985d3e), teal: mat(0x527b79), dark: mat(0x343a37),
-  glass: new THREE.MeshStandardMaterial({color:0x314b50, roughness:0.25, metalness:0.25}),
+  glass: new THREE.MeshStandardMaterial({color:0x314b50, roughness:0.25, metalness:0.25, transparent:true, opacity:0.38, depthWrite:false}),
   green: mat(0x566348), cactus: mat(0x53694d), yellow: mat(0xc79b4c),
   red: mat(0x9d493b), blue: mat(0x506a7c),
   eyeWhite: mat(0xe9e5d9), pupil: mat(0x1b211f), shoe: mat(0x242725)
@@ -678,6 +678,8 @@ function drawWorldMap(){
  block(36,28,30,19,'#b6a589');block(-82,22,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,24,21,14,'#b9a77d');block(-145,-76,57,14,'#b9ad91');
  ctx.font='bold 15px monospace';ctx.textAlign='left';ctx.fillStyle='#e0d1aa';
  for(const l of locations){const q=p(l.pos.x,l.pos.z);ctx.fillStyle=l.type==='police'?'#9bb9d9':'#dfc27b';ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e0d1aa';ctx.fillText(l.name,q.x+11,q.y-8);}
+ for(const item of evidenceItems){if(item.root.visible){const q=p(item.pos.x,item.pos.z);ctx.fillStyle='#e5c979';ctx.fillRect(q.x-5,q.y-5,10,10);}}
+ if(deliveryItem.root.visible){const q=p(deliveryItem.pos.x,deliveryItem.pos.z);ctx.fillStyle='#8fc4d2';ctx.fillRect(q.x-6,q.y-6,12,12);}
  const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
  const car=p(playerCar.position.x,playerCar.position.z);ctx.save();ctx.translate(car.x,car.y);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#83bfd1';ctx.fillRect(-7,-13,14,26);ctx.restore();
  const me=p(player.position.x,player.position.z);ctx.save();ctx.translate(me.x,me.y);ctx.rotate(-player.rotation.y);ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.restore();
@@ -871,7 +873,7 @@ function animate(){
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  if(firstPerson){
-  const origin=driving?playerCar.localToWorld(new THREE.Vector3(0,2.35,.58)):new THREE.Vector3(player.position.x,1.72,player.position.z);
+  const origin=driving?playerCar.localToWorld(new THREE.Vector3(0,1.72,.38)):new THREE.Vector3(player.position.x,1.72,player.position.z);
   const lookDirection=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
   camera.position.lerp(origin,1-Math.pow(.001,dt));camera.lookAt(origin.clone().addScaledVector(lookDirection,24));
  }else{
