@@ -5,19 +5,13 @@ const app = document.querySelector('#app');
 const $ = (id) => document.getElementById(id);
 document.addEventListener('contextmenu',event=>{event.preventDefault();event.stopPropagation();},true);
 document.addEventListener('selectstart',event=>{event.preventDefault();event.stopPropagation();},true);
-// Prevent Shift + arrow from invoking native text selection / IME selection UI.
+// Suppress browser text-selection shortcuts without interfering with the game's Shift-to-run key.
 document.addEventListener('keydown',event=>{
- if(event.shiftKey&&/^Arrow(Left|Right|Up|Down)$/.test(event.code)){
-  event.preventDefault();event.stopImmediatePropagation();
-  try{window.getSelection()?.removeAllRanges();}catch{}
+ if(event.shiftKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
+  event.preventDefault();
+  event.stopImmediatePropagation();
  }
 },true);
-document.addEventListener('keyup',event=>{
- if(event.code==='ShiftLeft'||event.code==='ShiftRight')event.preventDefault();
-},true);
-document.addEventListener('selectionchange',()=>{
- try{if(window.getSelection()?.rangeCount)window.getSelection().removeAllRanges();}catch{}
-});
 let gameReady=false;
 function showStartupError(message){
  const loading=$('loading');if(!loading)return;
@@ -450,6 +444,27 @@ function updateObjectiveDistance(){
 }
 
 const keys={};
+let clickMovePath=[];
+const walkObstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,22,13,8.5],[100,-70,20,16],[78,24,10,7],[-145,-76,28.5,7.5],[19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5]];
+function buildClickMovePath(destination){
+ const step=5,size=97,min=-240,index=(x,z)=>{const gx=Math.max(0,Math.min(size-1,Math.round((x-min)/step))),gz=Math.max(0,Math.min(size-1,Math.round((z-min)/step)));return gz*size+gx;};
+ const blocked=(i)=>{const x=min+(i%size)*step,z=min+Math.floor(i/size)*step;return walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.2&&Math.abs(z-oz)<rz+1.2);};
+ const start=index(player.position.x,player.position.z),goal=index(destination.x,destination.z);
+ const parent=new Int32Array(size*size);parent.fill(-1);const queue=new Int32Array(size*size);let read=0,write=0;queue[write++]=start;parent[start]=start;
+ let found=-1;
+ while(read<write){const cur=queue[read++];if(cur===goal){found=cur;break;}
+  const x=cur%size,z=Math.floor(cur/size),next=[x>0?cur-1:-1,x<size-1?cur+1:-1,z>0?cur-size:-1,z<size-1?cur+size:-1];
+  for(const n of next){if(n<0||parent[n]!==-1||(n!==goal&&blocked(n)))continue;parent[n]=cur;queue[write++]=n;}
+ }
+ if(found<0){clickMovePath=[];showToast('No clear walking route to that point.');return false;}
+ const route=[];for(let n=found;n!==start;n=parent[n])route.push(new THREE.Vector3(min+(n%size)*step,0,min+Math.floor(n/size)*step));
+ route.reverse();route.push(new THREE.Vector3(destination.x,0,destination.z));clickMovePath=route;return true;
+}
+function setClickDestination(x,z){
+ const point=new THREE.Vector3(THREE.MathUtils.clamp(x,-235,235),0,THREE.MathUtils.clamp(z,-230,230));
+ if(driving){showToast('Exit the car before setting a walking destination.');return;}
+ customWaypoint=point.clone();buildClickMovePath(point);saveGame();drawMiniMap();updateObjectiveDistance();
+}
 let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI, pitch=-.08, dragging=false, lastX=0,lastY=0;
 player.rotation.y=yaw;
 const cameraTarget=new THREE.Vector3();
@@ -779,9 +794,9 @@ $('world-map').addEventListener('click',e=>{
  const canvas=$('world-map'),rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
  const scale=Math.min((canvas.width-90)/520,(canvas.height-70)/520),x=(px-canvas.width/2)/scale,z=(py-canvas.height/2)/scale;
  if(x< -245||x>245||z< -245||z>245){showToast('Choose a point inside the city map.');return;}
- customWaypoint=new THREE.Vector3(x,0,z);saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint set.');
+ setClickDestination(x,z);drawWorldMap();setMapOpen(false);showToast('Destination set · walking there now.');
 });
-const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
+const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;clickMovePath=[];saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
 $('map-close').onclick=()=>setMapOpen(false);
 function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
 function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
@@ -801,8 +816,23 @@ window.addEventListener('keyup',e=>keys[e.code]=false);
 window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;resetJoystick();});
 window.addEventListener('pagehide',saveGame);
 document.addEventListener('visibilitychange',()=>{if(document.hidden){saveGame();Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;resetJoystick();}});
-renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
-renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+let scenePointerStart=null;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;scenePointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}});
+renderer.domElement.addEventListener('pointerup',e=>{
+ dragging=false;
+ if(!scenePointerStart||scenePointerStart.id!==e.pointerId)return;
+ const distance=Math.hypot(e.clientX-scenePointerStart.x,e.clientY-scenePointerStart.y);
+ scenePointerStart=null;
+ if(distance>9||dialogOpen||mapOpen||driving)return;
+ const rect=renderer.domElement.getBoundingClientRect();
+ const ndc=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+ const raycaster=new THREE.Raycaster();raycaster.setFromCamera(ndc,camera);
+ const ground=new THREE.Plane(new THREE.Vector3(0,1,0),0),point=new THREE.Vector3();
+ if(raycaster.ray.intersectPlane(ground,point)&&Math.abs(point.x)<245&&Math.abs(point.z)<235){
+  setClickDestination(point.x,point.z);showToast('Destination set · walking there now.');
+ }
+});
+renderer.domElement.addEventListener('pointercancel',()=>{dragging=false;scenePointerStart=null;});
 renderer.domElement.addEventListener('pointermove',e=>{
  if(!dragging)return;
  yaw+=(e.clientX-lastX)*.004; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.003));
@@ -925,21 +955,28 @@ function animate(){
    $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H · FUEL '+Math.round(fuel)+'%';
   }else{
    $('drive-info').textContent='ON FOOT';
-   const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY;
-   const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX;
+   const manualForward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY;
+   const manualSide=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX;
+   if(manualForward!==0||manualSide!==0)clickMovePath=[];
+   while(clickMovePath.length&&player.position.distanceTo(clickMovePath[0])<1.9)clickMovePath.shift();
+   const autoTarget=clickMovePath[0]||null;
+   if(autoTarget)yaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z);
+   const forward=autoTarget?1:manualForward;
+   const side=autoTarget?0:manualSide;
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
    const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
    const right=new THREE.Vector3(-direction.z,0,direction.x);
    const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
-   const obstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,22,13,8.5],[100,-70,20,16],[78,24,10,7],[-145,-76,28.5,7.5],[19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5]];
-   const isBlocked=(x,z)=>obstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
+   const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
    const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<3.0);
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
    if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
-   if(player.position.x!==oldX||player.position.z!==oldZ){player.rotation.y=Math.atan2(move.x,move.z);walkingNow=true;}
+   if(player.position.x!==oldX||player.position.z!==oldZ){if(!autoTarget)player.rotation.y=Math.atan2(move.x,move.z);walkingNow=true;}
+   else if(autoTarget){clickMovePath=[];showToast('Route blocked · choose another destination.');}
+   if(autoTarget&&clickMovePath.length===0){customWaypoint=null;saveGame();drawMiniMap();}
   }
   player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
