@@ -1,0 +1,23 @@
+{
+  "name": "Albuquerque Stories",
+  "short_name": "ABQ Stories",
+  "description": "A playable 3D story-driven city sandbox.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "fullscreen",
+    "standalone"
+  ],
+  "orientation": "any",
+  "background_color": "#101411",
+  "theme_color": "#101411",
+  "icons": [
+    {
+      "src": "/icons/abq.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
