@@ -419,7 +419,11 @@ function animate(){
   const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
   const right=new THREE.Vector3(direction.z,0,-direction.x);
   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
-  if(move.lengthSq()>0){move.normalize();player.position.addScaledVector(move,speed);player.rotation.y=Math.atan2(move.x,move.z);}
+  if(move.lengthSq()>0){
+    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
+    const blocked=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7]].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx&&Math.abs(next.z-z)<rz);
+    if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+   }
   player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
  }
@@ -432,5 +436,5 @@ function animate(){
  camera.lookAt(cameraTarget);
  renderer.render(scene,camera);
 }
-updateHUD();animate();
+updateHUD();saveGame();drawMiniMap();animate();
 setTimeout(()=>$('loading').classList.add('gone'),700);
