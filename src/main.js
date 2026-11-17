@@ -194,46 +194,146 @@ box(gasStation,0,.08,14,27,.16,10,materials.asphalt,false);
 // Parked cars
 const vehicleRegistry=[];
 function car(x,z,color,rotation=0){
- const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=rotation; scene.add(g);vehicleRegistry.push(g);
- box(g,0,.8,0,2.5,1.2,5,mat(color));
- box(g,0,1.55,-.1,1.9,.8,2.8,materials.glass);
- box(g,0,.45,2.52,2.25,.22,.16,materials.dark);box(g,0,.45,-2.52,2.25,.22,.16,materials.dark);
- for(const side of [-1,1]){box(g,side*.92,.88,2.48,.42,.2,.1,materials.yellow);box(g,side*.92,.88,-2.48,.42,.2,.1,materials.red);box(g,side*1.22,1.52,.1,.28,.18,.38,materials.dark);}
- for(let wx of [-1.25,1.25]) for(let wz of [-1.65,1.65]){
-  const w=cylinder(g,wx,.48,wz,.48,.48,.28,materials.dark,12); w.rotation.z=Math.PI/2;
+ const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=rotation;scene.add(g);vehicleRegistry.push(g);
+ const paint=mat(color,.48),paintDark=mat(0x303b3b,.58),rubber=mat(0x171a1a,.92),chrome=mat(0xb9b9ae,.32),lamp=mat(0xffe6b1,.28),tail=mat(0xb94332,.34);
+ // Lower chassis, sculpted beltline and separate hood/trunk give each sedan a recognisable profile.
+ box(g,0,.68,0,2.42,.82,4.82,paint);
+ box(g,0,.53,0,2.48,.18,4.95,paintDark);
+ box(g,0,1.04,1.42,2.36,.34,1.78,paint);
+ box(g,0,1.02,-1.58,2.34,.32,1.48,paint);
+ box(g,0,1.42,-.12,1.94,.72,2.42,paint);
+ // Front and rear windscreens.
+ const frontGlass=box(g,0,1.49,1.12,1.82,.58,.055,materials.glass);frontGlass.rotation.x=-.25;
+ const rearGlass=box(g,0,1.48,-1.34,1.78,.54,.055,materials.glass);rearGlass.rotation.x=.24;
+ // Roof panel, side glass, door frames and handles.
+ box(g,0,1.83,-.12,1.82,.12,2.05,paint);
+ for(const side of [-1,1]){
+  box(g,side*1.205,1.48,.48,.045,.52,.92,materials.glass);
+  box(g,side*1.205,1.48,-.55,.045,.52,.95,materials.glass);
+  box(g,side*1.224,1.02,.05,.025,.62,.035,paintDark);
+  box(g,side*1.235,1.18,.08,.035,.055,.28,chrome);
+  box(g,side*1.34,1.56,.9,.26,.13,.22,paintDark);
+  box(g,side*1.39,1.55,1.0,.12,.1,.12,chrome);
+  // Door rub strip and side indicator.
+  box(g,side*1.22,.82,-.1,.035,.075,2.95,chrome);
+  box(g,side*1.235,.93,1.78,.035,.12,.22,lamp);
  }
+ // Front grille, bumper, lamps and rear light clusters.
+ box(g,0,.64,2.43,2.3,.2,.16,chrome);
+ box(g,0,1.0,2.455,.86,.34,.055,paintDark);
+ for(let i=0;i<5;i++)box(g,0,.87+i*.055,2.49,.72,.018,.025,chrome);
+ for(const side of [-1,1]){
+  box(g,side*.88,1.0,2.46,.42,.28,.08,lamp);
+  box(g,side*.91,.72,-2.43,.32,.4,.09,tail);
+  box(g,side*.91,.72,-2.49,.18,.19,.04,lamp);
+ }
+ box(g,0,.62,-2.43,2.28,.2,.16,chrome);
+ // Four rubber tyres with alloy hubs and lug detail.
+ for(const side of [-1,1])for(const wz of [-1.62,1.62]){
+  const tire=cylinder(g,side*1.18,.48,wz,.48,.48,.3,rubber,18);tire.rotation.z=Math.PI/2;
+  const rim=cylinder(g,side*1.345,.48,wz,.29,.29,.315,chrome,16);rim.rotation.z=Math.PI/2;
+  const hub=cylinder(g,side*1.36,.48,wz,.105,.105,.32,paintDark,12);hub.rotation.z=Math.PI/2;
+  for(let k=0;k<5;k++){const a=k*Math.PI*2/5;const lug=new THREE.Mesh(new THREE.SphereGeometry(.035,6,5),chrome);lug.position.set(side*1.37,.48+Math.sin(a)*.19,wz+Math.cos(a)*.19);g.add(lug);}
+ }
+ // Number plate and subtle exhaust.
+ box(g,0,.43,2.53,.64,.15,.035,materials.white);
+ box(g,0,.43,-2.53,.64,.15,.035,materials.white);
+ const exhaust=cylinder(g,.72,.28,-2.05,.055,.055,.35,chrome,8);exhaust.rotation.x=Math.PI/2;
  return g;
 }
 const playerCar=car(-190,165,0xe8e4d6,0);
-// Replace the starter sedan mesh with a classic 1980s Winnebago-style RV.
+// Dedicated 1980s Winnebago-style motorhome: separate cab, coach body, glass, trim and running gear.
 while(playerCar.children.length)playerCar.remove(playerCar.children[0]);
-const rvBody=mat(0xe5e0d1),rvLower=mat(0x777b70),rvGreen=mat(0x4d6856),rvGlass=mat(0x26383b),rvChrome=mat(0xb5b5a7);
-box(playerCar,0,1.68,-.18,2.72,2.55,7.55,rvBody);
-box(playerCar,0,.48,-.18,2.78,.34,7.58,rvLower);
-box(playerCar,0,1.05,-.18,2.79,.23,7.62,rvGreen);
-box(playerCar,0,2.93,-.18,2.66,.16,7.42,rvBody);
-box(playerCar,0,2.72,3.13,2.58,.72,1.42,rvBody);
-box(playerCar,0,2.36,3.88,2.18,.92,.08,rvGlass);
-box(playerCar,0,1.98,3.94,2.2,.09,.1,rvChrome);
-box(playerCar,0,.88,3.91,1.55,.24,.12,rvChrome);
-box(playerCar,-.72,1.35,3.95,.28,.22,.12,materials.yellow);
-box(playerCar,.72,1.35,3.95,.28,.22,.12,materials.yellow);
-box(playerCar,0,1.52,-3.98,2.25,.5,.08,rvLower);
+const rvBody=mat(0xe9e3d4,.55),rvLower=mat(0x666d68,.66),rvGreen=mat(0x3f6656,.48),rvGold=mat(0xb39a66,.5),rvGlass=new THREE.MeshStandardMaterial({color:0x182c32,roughness:.2,metalness:.24,transparent:true,opacity:.82}),rvChrome=mat(0xbec0b6,.3),rvRubber=mat(0x171a1a,.92),rvBlack=mat(0x222827,.8);
+box(playerCar,0,1.68,-.22,2.72,2.55,7.55,rvBody);
+box(playerCar,0,.48,-.22,2.79,.34,7.65,rvLower);
+box(playerCar,0,.92,-.22,2.81,.12,7.68,rvChrome);
+box(playerCar,0,1.07,-.22,2.82,.19,7.7,rvGreen);
+box(playerCar,0,1.17,-.22,2.83,.035,7.72,rvGold);
+box(playerCar,0,2.93,-.22,2.66,.16,7.42,rvBody);
+// Cab nose slopes forward; broad split windscreen makes it read as a motorhome, not a box van.
+const rvNose=box(playerCar,0,1.48,3.52,2.7,1.42,1.12,rvBody);rvNose.rotation.x=-.12;
+box(playerCar,0,2.47,3.55,2.58,.25,1.15,rvBody);
+const rvWindshield=box(playerCar,0,2.08,4.075,2.28,.91,.055,rvGlass);rvWindshield.rotation.x=-.1;
+box(playerCar,0,1.55,4.06,2.32,.1,.12,rvChrome);
+box(playerCar,0,.93,4.03,2.45,.22,.16,rvLower);
+box(playerCar,0,.78,4.13,2.3,.12,.08,rvChrome);
+// Split windshield centre bar, wipers, headlights and a deep front grille.
+box(playerCar,0,2.08,4.11,.045,.86,.045,rvChrome);
 for(const side of [-1,1]){
- box(playerCar,side*1.372,2.03,-2.35,.045,.92,1.18,rvGlass);
- box(playerCar,side*1.372,2.03,-.48,.045,.92,1.18,rvGlass);
- box(playerCar,side*1.372,2.03,1.42,.045,.92,1.18,rvGlass);
- box(playerCar,side*1.39,1.04,-.15,.035,.12,6.7,rvGreen);
- box(playerCar,side*1.405,1.78,-.15,.035,.12,6.7,rvChrome);
- for(const wz of [-2.65,2.55]){
-  const wheel=cylinder(playerCar,side*1.38,.57,wz,.57,.57,.3,materials.dark,14);wheel.rotation.z=Math.PI/2;
-  const hub=cylinder(playerCar,side*1.55,.57,wz,.22,.22,.31,rvChrome,12);hub.rotation.z=Math.PI/2;
- }
+ box(playerCar,side*.68,1.53,4.12,.55,.12,.08,rvBlack);
+ box(playerCar,side*.93,1.1,4.12,.5,.32,.12,rvChrome);
+ box(playerCar,side*.93,1.1,4.2,.38,.21,.055,materials.yellow);
+ box(playerCar,side*.52,.72,4.15,.42,.11,.08,rvChrome);
+ const mirrorArm=box(playerCar,side*1.47,2.02,3.25,.09,.09,.72,rvChrome);mirrorArm.rotation.y=side*.16;
+ box(playerCar,side*1.52,2.13,3.58,.22,.34,.18,rvBlack);
+ box(playerCar,side*1.54,2.14,3.68,.025,.22,.13,rvGlass);
 }
-box(playerCar,0,3.08,-.1,1.5,.12,2.2,rvLower);
-box(playerCar,0,3.22,-.1,.72,.12,.72,rvChrome);
-const rvRoofAntenna=cylinder(playerCar,.72,3.23,-2.8,.035,.035,.55,rvChrome,6);rvRoofAntenna.rotation.z=.2;
-box(playerCar,0,.35,-4.0,1.5,.38,.12,rvLower);
+// Six coach windows, driver/passenger cab windows and a proper entry door.
+for(const side of [-1,1]){
+ for(const z of [-2.55,-.72,1.1]){
+  box(playerCar,side*1.378,2.03,z, .045,.91,1.28,rvBlack);
+  box(playerCar,side*1.405,2.03,z, .026,.78,1.13,rvGlass);
+  box(playerCar,side*1.42,2.03,z-.66,.025,.94,.055,rvChrome);
+  box(playerCar,side*1.42,2.03,z+.66,.025,.94,.055,rvChrome);
+ }
+ box(playerCar,side*1.39,2.0,3.0,.045,.72,.82,rvGlass);
+ // Entry door with window, frame, handle and three steps.
+ box(playerCar,side*1.39,1.67,-1.65,.055,1.78,.92,rvLower);
+ box(playerCar,side*1.43,2.13,-1.65,.035,.66,.68,rvGlass);
+ box(playerCar,side*1.46,1.7,-1.27,.045,.12,.16,rvChrome);
+ box(playerCar,side*1.46,1.7,-2.04,.04,.12,.12,rvChrome);
+ box(playerCar,side*1.58,.52,-1.65,.55,.12,.92,rvChrome);
+ box(playerCar,side*1.58,.3,-1.65,.55,.12,.92,rvLower);
+ // Continuous two-tone coach stripe and polished rub rail.
+ box(playerCar,side*1.39,1.02,-.22,.035,.16,7.22,rvGreen);
+ box(playerCar,side*1.405,1.17,-.22,.035,.045,7.24,rvGold);
+ box(playerCar,side*1.405,1.82,-.22,.035,.045,7.22,rvChrome);
+ // Rear wheel arch trim and side marker lamps.
+ for(const z of [-2.72,2.52]){
+  const tire=cylinder(playerCar,side*1.42,.58,z,.62,.62,.34,rvRubber,20);tire.rotation.z=Math.PI/2;
+  const rim=cylinder(playerCar,side*1.61,.58,z,.34,.34,.36,rvChrome,16);rim.rotation.z=Math.PI/2;
+  const hub=cylinder(playerCar,side*1.63,.58,z,.13,.13,.38,rvLower,12);hub.rotation.z=Math.PI/2;
+  const arch=new THREE.Mesh(new THREE.TorusGeometry(.72,.055,7,28),rvLower);arch.position.set(side*1.42,.58,z);arch.rotation.y=Math.PI/2;playerCar.add(arch);
+  box(playerCar,side*1.43,1.05,z,.06,.16,.32,rvGold);
+ }
+ // Rear dual tyres: unmistakable heavy motorhome stance.
+ const dual=cylinder(playerCar,side*1.72,.58,-2.72,.58,.58,.28,rvRubber,18);dual.rotation.z=Math.PI/2;
+ const dualHub=cylinder(playerCar,side*1.88,.58,-2.72,.27,.27,.3,rvChrome,14);dualHub.rotation.z=Math.PI/2;
+}
+// Rear wall, tail lamps, ladder, bumper and spare tyre detail.
+box(playerCar,0,1.65,-4.03,2.55,2.15,.12,rvBody);
+box(playerCar,0,.58,-4.12,2.6,.28,.22,rvChrome);
+for(const side of [-1,1]){
+ box(playerCar,side*1.08,1.45,-4.13,.28,.68,.12,rvLower);
+ box(playerCar,side*1.08,1.47,-4.21,.18,.5,.055,mat(0x9c3c31));
+}
+for(let y=.9;y<2.8;y+=.42){
+ box(playerCar,1.27,y,-4.2,.07,.07,.35,rvChrome);
+ box(playerCar,1.27,y,-3.86,.07,.07,.35,rvChrome);
+}
+box(playerCar,1.27,1.85,-4.02,.07,1.95,.07,rvChrome);
+box(playerCar,0,.35,-4.2,1.5,.34,.2,rvLower);
+// Roof-mounted air conditioner, vents, skylight, antenna and exhaust stack.
+box(playerCar,0,3.12,-.3,1.5,.25,1.55,rvLower);
+box(playerCar,0,3.27,-.3,1.2,.08,1.2,rvChrome);
+box(playerCar,-.72,3.12,-2.5,.9,.28,1.1,rvLower);
+box(playerCar,-.72,3.27,-2.5,.72,.08,.9,rvChrome);
+box(playerCar,.65,3.1,1.25,.9,.12,1.05,rvGlass);
+const rvRoofAntenna=cylinder(playerCar,.92,3.35,-2.9,.035,.035,.75,rvChrome,6);rvRoofAntenna.rotation.z=.2;
+const rvExhaust=cylinder(playerCar,-1.18,2.5,-3.2,.09,.09,1.1,rvChrome,8);rvExhaust.rotation.z=.08;
+// Front bumper tow points, fuel filler and a small vintage coach emblem.
+box(playerCar,0,.48,4.2,2.72,.2,.18,rvChrome);
+box(playerCar,-1.42,1.22,-2.25,.045,.25,.3,rvChrome);
+const rvDecalCanvas=document.createElement('canvas');rvDecalCanvas.width=1024;rvDecalCanvas.height=128;
+const rvCtx=rvDecalCanvas.getContext('2d');rvCtx.clearRect(0,0,1024,128);
+rvCtx.fillStyle='#315b49';rvCtx.font='bold 70px Georgia';rvCtx.fillText('WINNEBAGO',18,82);
+rvCtx.fillStyle='#a78d5d';rvCtx.font='28px Arial';rvCtx.fillText('MOTOR COACH  ·  1980s',22,116);
+const rvDecalTexture=new THREE.CanvasTexture(rvDecalCanvas);rvDecalTexture.colorSpace=THREE.SRGBColorSpace;
+const rvDecalMat=new THREE.MeshBasicMaterial({map:rvDecalTexture,transparent:true,side:THREE.DoubleSide,depthWrite:false});
+for(const side of [-1,1]){
+ const decal=new THREE.Mesh(new THREE.PlaneGeometry(2.45,.31),rvDecalMat);decal.position.set(side*1.43,1.39,-.05);decal.rotation.y=side*Math.PI/2;playerCar.add(decal);
+}
 playerCar.scale.setScalar(2);
 car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
@@ -273,7 +373,7 @@ function vehicleOverlapsPedestrian(position,rotation,npc,vehicleRoot=null){
  if(dx*dx+dz*dz>(isRV?144:36))return false;
  const c=Math.cos(rotation),s=Math.sin(rotation);
  const localX=dx*c-dz*s,localZ=dx*s+dz*c;
- const halfWidth=isRV?2.85:1.58,halfLength=isRV?7.85:3.95;
+ const halfWidth=isRV?3.15:1.58,halfLength=isRV?8.55:3.95;
  const nearestX=THREE.MathUtils.clamp(localX,-halfWidth,halfWidth),nearestZ=THREE.MathUtils.clamp(localZ,-halfLength,halfLength);
  const side=localX-nearestX,front=localZ-nearestZ;
  return side*side+front*front<1.35*1.35;
@@ -315,7 +415,7 @@ function vehicleOverlapsVehicle(position,rotation,otherRoot,movingRoot=null){
  const cA=Math.cos(rotation),sA=Math.sin(rotation),cB=Math.cos(otherRoot.rotation.y),sB=Math.sin(otherRoot.rotation.y);
  const axes=[[cA,-sA],[sA,cA],[cB,-sB],[sB,cB]];
  const isRV_A=movingRoot===playerCar,isRV_B=otherRoot===playerCar;
- const wA=isRV_A?2.85:1.58,lA=isRV_A?7.85:2.88,wB=isRV_B?2.85:1.58,lB=isRV_B?7.85:2.88;
+ const wA=isRV_A?3.15:1.58,lA=isRV_A?8.55:2.88,wB=isRV_B?3.15:1.58,lB=isRV_B?8.55:2.88;
  for(const [ax,az] of axes){
   const radiusA=wA*Math.abs(ax*cA-az*sA)+lA*Math.abs(ax*sA+az*cA);
   const radiusB=wB*Math.abs(ax*cB-az*sB)+lB*Math.abs(ax*sB+az*cB);
@@ -350,6 +450,16 @@ const body=new THREE.Group(); player.add(body);
 const skinMat=mat(0xc49a78),jacketMat=mat(0xb5a17d),shirtMat=mat(0xd7d5c8),pantsMat=mat(0x77735e),glassMat=mat(0x242b2b);
 cylinder(body,0,1.35,0,.43,.5,1.05,jacketMat,10);
 box(body,0,1.39,.255,.34,.72,.035,shirtMat,false);
+// Open jacket lapels, collar, buttons, pockets and a visible belt.
+for(const side of [-1,1]){
+ const lapel=box(body,side*.105,1.57,.292,.16,.42,.055,jacketMat,false);lapel.rotation.z=side*.23;
+ const collar=box(body,side*.085,1.79,.22,.13,.2,.06,shirtMat,false);collar.rotation.z=side*-.18;
+ box(body,side*.235,1.35,.29,.22,.22,.045,jacketMat,false);
+ box(body,side*.235,1.35,.319,.13,.105,.018,mat(0x8d8067),false);
+}
+for(let y of [1.56,1.39,1.22]){const button=new THREE.Mesh(new THREE.SphereGeometry(.022,6,5),glassMat);button.position.set(.015,y,.315);body.add(button);}
+box(body,0,.91,.02,.57,.13,.45,mat(0x383b36),false);
+box(body,0,.91,.26,.1,.11,.035,mat(0xb3a37e),false);
 for(const side of [-1,1]){
  box(body,side*.16,1.73,.27,.19,.24,.045,jacketMat,false);
  box(body,side*.2,.08,.12,.34,.16,.55,materials.shoe);
@@ -358,7 +468,7 @@ const head=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),skinMat);
 head.position.y=2.12;head.castShadow=true;body.add(head);
 cylinder(body,0,1.84,0,.13,.13,.28,skinMat,8);
 // Clean-shaven scalp with a subtle close-cropped rim; no full hair cap.
-const scalp=new THREE.Mesh(new THREE.SphereGeometry(.343,16,10,0,Math.PI*2,0,Math.PI/2),mat(0x9c806a));
+const scalp=new THREE.Mesh(new THREE.SphereGeometry(.343,16,10,0,Math.PI*2,0,Math.PI/2),mat(0xb58c70));
 scalp.position.y=2.275;body.add(scalp);
 for(const side of [-1,1]){
  const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),materials.eyeWhite);eye.position.set(side*.115,2.16,.302);body.add(eye);
@@ -377,30 +487,57 @@ const nose=new THREE.Mesh(new THREE.ConeGeometry(.065,.13,6),skinMat);nose.posit
 // Short dark goatee and moustache.
 const beard=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),mat(0x35322e));beard.scale.set(1,.58,.42);beard.position.set(0,1.91,.285);body.add(beard);
 box(body,0,2.005,.32,.22,.045,.07,glassMat,false);
-const playerArms=[],playerLegs=[];
 for(const side of [-1,1]){
- const arm=cylinder(body,side*.48,1.3,0,.14,.17,.82,jacketMat,8);arm.rotation.z=side*.12;playerArms.push(arm);
- const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,pantsMat,9);playerLegs.push(leg);
+ const brow=box(body,side*.115,2.235,.345,.16,.035,.035,mat(0x4a4038),false);brow.rotation.z=side*.04;
+ const cheek=new THREE.Mesh(new THREE.SphereGeometry(.11,8,6),skinMat);cheek.scale.set(1,.55,.42);cheek.position.set(side*.2,2.02,.27);body.add(cheek);
+}
+const playerArms=[],playerLegs=[],playerHands=[];
+for(const side of [-1,1]){
+ const arm=cylinder(body,side*.48,1.3,0,.14,.17,.82,jacketMat,10);arm.rotation.z=side*.12;playerArms.push(arm);
+ const cuff=cylinder(body,side*.49,.91,0,.145,.145,.13,mat(0x8c806b),10);cuff.rotation.z=side*.12;
+ const hand=new THREE.Mesh(new THREE.SphereGeometry(.13,10,8),skinMat);hand.position.set(side*.49,.77,.02);body.add(hand);playerHands.push(hand);
+ const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,pantsMat,10);playerLegs.push(leg);
+ box(body,side*.2,.11,.18,.38,.16,.58,materials.shoe,false);
+ box(body,side*.2,.045,.18,.39,.055,.59,mat(0x101413),false);
+ for(let k=0;k<3;k++)box(body,side*.2,.18+k*.035,.38,.12,.018,.018,rvChrome,false);
 }
 player.position.set(0,0,0);
 
 function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
  const root=new THREE.Group();root.position.set(x,0,z);scene.add(root);
- const torso=new THREE.Mesh(new THREE.CylinderGeometry(.34,.43,1.05,9),mat(shirt));torso.position.y=1.35;torso.castShadow=true;root.add(torso);
- const head=new THREE.Mesh(new THREE.SphereGeometry(.31,12,10),mat(skin));head.position.y=2.12;head.castShadow=true;root.add(head);
- cylinder(root,0,1.84,0,.12,.12,.25,mat(skin),8);
+ const shirtMat=mat(shirt),pantsMat=mat(pants),skinMaterial=mat(skin),trimMat=mat(0x252a29);
+ const torso=new THREE.Mesh(new THREE.CylinderGeometry(.34,.43,1.05,12),shirtMat);torso.position.y=1.35;torso.castShadow=true;root.add(torso);
+ // Tailored shirt details: collar, placket, buttons, pocket and hem.
+ box(root,0,1.82,.16,.42,.16,.34,shirtMat);
+ for(const side of [-1,1]){const collar=box(root,side*.105,1.78,.205,.17,.18,.07,shirtMat);collar.rotation.z=side*.2;}
+ box(root,0,1.38,.392,.045,.62,.025,trimMat);
+ for(const y of [1.62,1.43,1.24]){const button=new THREE.Mesh(new THREE.SphereGeometry(.022,6,5),materials.white);button.position.set(.035,y,.411);root.add(button);}
+ box(root,-.21,1.48,.365,.22,.2,.035,shirtMat);
+ box(root,-.21,1.48,.39,.17,.12,.018,mat(0x716b5c));
+ box(root,0,.82,.02,.58,.12,.44,trimMat);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.31,14,12),skinMaterial);head.position.y=2.12;head.castShadow=true;root.add(head);
+ cylinder(root,0,1.84,0,.12,.12,.25,skinMaterial,10);
  const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);hairCap.position.y=2.27;root.add(hairCap);
- const faceSkin=mat(skin);
+ const faceSkin=skinMaterial;
  for(const side of [-1,1]){
   const eye=new THREE.Mesh(new THREE.SphereGeometry(.047,8,6),materials.eyeWhite);eye.position.set(side*.105,2.15,.274);root.add(eye);
+  const brow=box(root,side*.105,2.225,.285,.14,.03,.035,trimMat);brow.rotation.z=side*.04;
   const pupil=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),materials.pupil);pupil.position.set(side*.105,2.15,.315);root.add(pupil);
   const ear=new THREE.Mesh(new THREE.SphereGeometry(.065,8,6),faceSkin);ear.position.set(side*.3,2.1,0);root.add(ear);
-  box(root,side*.19,.075,.12,.32,.15,.5,materials.shoe);
+  box(root,side*.19,.095,.12,.34,.18,.54,materials.shoe);
+  box(root,side*.19,.025,.12,.35,.055,.55,trimMat);
  }
  const nose=new THREE.Mesh(new THREE.ConeGeometry(.055,.12,6),faceSkin);nose.position.set(0,2.08,.31);nose.rotation.x=Math.PI/2;root.add(nose);
- const arms=[],legs=[];
- for(const side of [-1,1]){const arm=cylinder(root,side*.43,1.35,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;arms.push(arm);legs.push(cylinder(root,side*.19,.43,0,.15,.18,.75,mat(pants),8));}
- return {root,phase:Math.random()*6,arms,legs};
+ const arms=[],legs=[],hands=[];
+ for(const side of [-1,1]){
+  const arm=cylinder(root,side*.43,1.35,0,.14,.17,.8,shirtMat,10);arm.rotation.z=side*.12;arms.push(arm);
+  const cuff=cylinder(root,side*.45,.96,0,.14,.14,.12,trimMat,8);cuff.rotation.z=side*.12;
+  const hand=new THREE.Mesh(new THREE.SphereGeometry(.12,9,7),skinMaterial);hand.position.set(side*.45,.83,.015);root.add(hand);hands.push(hand);
+  const leg=cylinder(root,side*.19,.43,0,.15,.18,.75,pantsMat,10);legs.push(leg);
+  box(root,side*.19,.1,.12,.34,.16,.52,materials.shoe);
+  box(root,side*.19,.025,.12,.35,.055,.53,trimMat);
+ }
+ return {root,phase:Math.random()*6,arms,legs,hands};
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,32,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
