@@ -193,8 +193,8 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22),worldLabel('POLICE PATROL',96,30,'#9bb9d9')];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,policeHelpUsed=!!saved.policeHelpUsed;
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone;
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){playerCar.position.set(saved.carX,0,Number.isFinite(saved.carZ)?saved.carZ:-6);if(Number.isFinite(saved.carRotation))playerCar.rotation.y=saved.carRotation;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
@@ -244,11 +244,16 @@ $('close-dialogue').onclick=closeDialogue;
 
 function interact(target){
  if(!target)return;
- if(target.type==='mission'&&missionStep===0){
-  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+ if(target.type==='mission'){
+  if(missionStep===0)openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
    {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
-   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+   {label:'“Forget it. Not today.”',run:()=>{heat=Math.min(100,heat+2);showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
   ]);
+  else if(!carWashShiftDone)openDialogue('CAR WASH MANAGER','The afternoon rush is over, but there is still work to do. A short shift would put some cash in your pocket.',[
+   {label:'Work the short shift (+$300, heat -2)',run:()=>{cash+=300;heat=Math.max(0,heat-2);carWashShiftDone=true;showToast('Shift complete. +$300.');saveGame();updateHUD();}},
+   {label:'Ask Jesse how things are going',run:()=>{showToast('Jesse says to keep your head down.');}}
+  ]);
+  else openDialogue('CAR WASH MANAGER','You already worked your shift today. The wash is running smoothly.',[{label:'Leave',run:()=>{}}]);
  }else if(target.type==='talk'){
   const dinerChoices=[];
   if(missionStep===1)dinerChoices.push({label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
