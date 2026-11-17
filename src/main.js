@@ -191,7 +191,10 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false;
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+if(Number.isFinite(saved.carX)){playerCar.position.set(saved.carX,0,Number.isFinite(saved.carZ)?saved.carZ:-6);if(Number.isFinite(saved.carRotation))playerCar.rotation.y=saved.carRotation;}
+if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
+else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
 function currentObjective(){return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:null;}
 const objectiveBeacon=new THREE.Group();
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
@@ -328,6 +331,7 @@ function resize(){
 }
 window.addEventListener('resize',resize);
 const clock=new THREE.Clock();
+let lastAutoSave=0;
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
@@ -377,6 +381,7 @@ function animate(){
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
  animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);ambientNPCs.forEach((npc,i)=>{animateNpc(npc);npc.root.rotation.y+=Math.sin(animTime*.00025+i)*.00015;});
  updateObjectiveBeacon(animTime);
+ if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  const camDist=driving?15:10.5;
  const cameraYaw=driving?playerCar.rotation.y:yaw;
  const offset=driving?new THREE.Vector3(-Math.sin(cameraYaw)*camDist,5.2,-Math.cos(cameraYaw)*camDist):new THREE.Vector3(Math.sin(cameraYaw)*camDist,4.5+pitch*5,Math.cos(cameraYaw)*camDist);
