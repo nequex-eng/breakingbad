@@ -207,9 +207,10 @@ function showToast(text){
 function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
  updateHealthUI();
- const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','CHAPTER ONE COMPLETE'];
- const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','You completed the first chapter. Explore Albuquerque and recover when needed.'];
- const step=Math.min(missionStep,3);
+ $('stats').textContent='TRUST '+Math.round(trust)+' · HEAT '+Math.round(heat);
+ const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','CHAPTER TWO COMPLETE'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','The envelope is delivered. Explore Albuquerque, drive around, or recover at the diner.'];
+ const step=Math.min(missionStep,4);
  $('mission-title').textContent=titles[step];
  $('mission-copy').textContent=copies[step];
  const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','38%','68%','100%'][step];
@@ -234,11 +235,13 @@ function interact(target){
    {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
   ]);
  }else if(target.type==='talk'){
-  openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',[
-   {label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=Math.max(missionStep,2);showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}},
-   {label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}},
-   {label:'Buy a meal (+60 health, $250)',run:()=>{if(healPlayer(60,250))showToast('You feel much better.');}}
-  ]);
+  const dinerChoices=[];
+  if(missionStep===1)dinerChoices.push({label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
+  else if(missionStep===3)dinerChoices.push({label:'Hand over the sealed envelope (complete delivery)',run:()=>{missionStep=4;cash+=900;heat=Math.max(0,heat-3);trust=Math.min(100,trust+5);showToast('Delivery complete. +$900 · Heat reduced.');saveGame();updateHUD();}});
+  else if(missionStep===0)dinerChoices.push({label:'You should speak to Jesse at the car wash first.',run:()=>{showToast('Jesse is waiting at the car wash.');}});
+  dinerChoices.push({label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}});
+  dinerChoices.push({label:'Buy a meal (+60 health, $250)',run:()=>{if(healPlayer(60,250))showToast('You feel much better.');}});
+  openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',dinerChoices);
  }else if(target.type==='gas'){
   openDialogue('GAS STATION','A quiet stop beside the highway. The attendant offers a first-aid kit and a chance to regroup.',[
    {label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}},
@@ -247,10 +250,10 @@ function interact(target){
  }else if(target.type==='warehouse'){
   if(missionStep<2)openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
   else if(missionStep===2)openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[
-   {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat+=2;cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800');saveGame();updateHUD();}},
-   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat+=8;missionStep=3;showToast('You got what you came for. +$2,400');saveGame();updateHUD();}}
+   {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat+=2;cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800 · A delivery is waiting.');saveGame();updateHUD();}},
+   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat+=8;missionStep=3;showToast('You got what you came for. +$2,400 · A delivery is waiting.');saveGame();updateHUD();}}
   ]);
-  else openDialogue('WAREHOUSE CONTACT','The warehouse is secure for now. You have completed the first chapter.',[{label:'Understood',run:()=>{}}]);
+  else openDialogue('WAREHOUSE CONTACT','The warehouse is secure for now. The delivery is your next move.',[{label:'Understood',run:()=>{}}]);
  }
 }
 function updateActive(){
