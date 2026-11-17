@@ -162,7 +162,7 @@ const economyPoints=[
  {kind:'supply',name:'SEALED CACHE A',label:'COLLECT SEALED A',pos:new THREE.Vector3(76,0,72),resource:'A'},
  {kind:'supply',name:'SEALED CACHE B',label:'COLLECT SEALED B',pos:new THREE.Vector3(116,0,35),resource:'B'},
  {kind:'supply',name:'SEALED CACHE C',label:'COLLECT SEALED C',pos:new THREE.Vector3(145,0,-12),resource:'C'},
- {kind:'lab',name:'WORKSHOP',label:'MAKE A BATCH',pos:new THREE.Vector3(100,0,-70)},
+ {kind:'lab',name:'WORKSHOP',label:'MAKE A BATCH',pos:new THREE.Vector3(100,0,-47)},
  {kind:'buyer',name:'BACK-ALLEY CONTACT',label:'SELL FINISHED BATCH',pos:new THREE.Vector3(-66,0,28)}
 ];
 for(const p of economyPoints){
@@ -207,13 +207,14 @@ const SAVE_KEY='abq-stories-save-v1';
 let saved={};
 try { saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{}; } catch {}
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false;
-const inventory={A:0,B:0,C:0,batches:0,...(saved.inventory||{})};
+const inventory={A:0,B:0,C:0,batches:0,collected:[],...(saved.inventory||{})};
 if(saved.chosenCharacter)chosenCharacter=saved.chosenCharacter;
 function updateLoopHUD(){
  $('inventory-line').textContent='SEALED A '+inventory.A+' · B '+inventory.B+' · C '+inventory.C;
  $('batch-line').textContent='FINISHED BATCHES '+inventory.batches;
  $('player-role').textContent=chosenCharacter==='walter'?'HEISENBERG':'JESSE PINKMAN';
- $('loop-hint').textContent=inventory.batches>0?'A buyer is waiting. Take a batch to the contact.':'Collect one sealed unit of A, B and C, then visit the workshop.';
+ $('loop-hint').textContent=inventory.batches>0?'A buyer is waiting. Take a batch to the contact.':'Collect sealed A, B and C supplies, then visit the workshop.';
+ for(const p of economyPoints){if(p.kind==='supply'&&inventory.collected.includes(p.resource)){p.collected=true;p.label='CACHE EMPTY';p.visual.material.color.setHex(0x596052);p.visual.material.emissive.setHex(0x101510);}}
 }
 function startAs(role){
  chosenCharacter=role;gameStarted=true;
@@ -242,8 +243,8 @@ function updateHUD(){
  updateLoopHUD();
  $('cash').textContent='$'+cash.toLocaleString('en-US');
  const stats=$('stats'); if(stats) stats.textContent='SKYLER '+people.skyler.trust+' · JESSE '+people.jesse.trust+' · HEAT '+heat;
- $('mission-title').textContent=missionStep===0?'A LIFE THAT LOOKS NORMAL':missionStep===1?'A CONVERSATION WITH JESSE':'TWO LIVES, ONE MAN';
- $('mission-copy').textContent=missionStep===0?'Go home or visit school. The people closest to Walter notice when he changes.':missionStep===1?'Find Jesse at the car wash. He remembers Walter as his chemistry teacher.':'There is no quest marker for every problem. Talk, listen, and decide what Walter hides.';
+ $('mission-title').textContent='BUILD THE OPERATION';
+ $('mission-copy').textContent=inventory.batches>0?'Take a finished batch to the street contact and make the sale.':'Explore the marked caches. Gather sealed supplies and return to the workshop.';
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
@@ -261,7 +262,8 @@ function interact(target){
  if(!target)return;
  if(target.kind==='supply'){
   const key=target.resource,amount=chosenCharacter==='jesse'?2:1;
-  inventory[key]+=amount;target.label='CACHE EMPTY';target.collected=true;
+  if(inventory.collected.includes(key)){showToast('This supply cache has already been collected.');return;}
+  inventory[key]+=amount;inventory.collected.push(key);target.label='CACHE EMPTY';target.collected=true;
   target.visual.material.color.setHex(0x596052);target.visual.material.emissive.setHex(0x101510);
   showToast((chosenCharacter==='jesse'?'Jesse':'Heisenberg')+' collected '+amount+' sealed unit(s) '+key+'.');
   updateLoopHUD();saveGame();return;
@@ -313,7 +315,7 @@ function updateActive(){
  if(player.position.distanceTo(locations[5].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
  $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
 }
-function onInteract(){if(!dialogOpen&&active)interact(active);}
+function onInteract(){if(gameStarted&&!dialogOpen&&active)interact(active);}
 
 window.addEventListener('keydown',e=>{
  keys[e.code]=true;
