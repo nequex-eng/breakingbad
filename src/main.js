@@ -904,7 +904,19 @@ function animate(){
  landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
  renderer.render(scene,camera);
 }
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+// Keep the live game independent of stale service-worker shells. Clear legacy app caches once on startup.
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+ window.addEventListener('load',async()=>{
+  try{
+   const registrations=await navigator.serviceWorker.getRegistrations();
+   await Promise.all(registrations.map(registration=>registration.unregister()));
+   if('caches' in window){
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(key=>key.startsWith('abq-stories-')).map(key=>caches.delete(key)));
+   }
+  }catch(error){console.warn('App cache cleanup skipped',error);}
+ });
+}
 updateHUD();saveGame();drawMiniMap();animate();
 gameReady=true;clearTimeout(startupWatchdog);
 setTimeout(()=>$('loading').classList.add('gone'),700);
