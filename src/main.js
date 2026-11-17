@@ -233,7 +233,7 @@ function vehicleOverlapsPedestrian(position,rotation,npc){
  const localX=dx*c-dz*s,localZ=dx*s+dz*c;
  const nearestX=THREE.MathUtils.clamp(localX,-1.48,1.48),nearestZ=THREE.MathUtils.clamp(localZ,-2.72,2.72);
  const side=localX-nearestX,front=localZ-nearestZ;
- return side*side+front*front<.82*.82;
+ return side*side+front*front<1.35*1.35;
 }
 function pedestrianBlockedByAnyVehicle(x,z){
  const probe={root:{position:new THREE.Vector3(x,0,z)}};
@@ -276,6 +276,16 @@ function vehicleOverlapsVehicle(position,rotation,otherRoot){
   if(Math.abs(dx*ax+dz*az)>radiusA+radiusB+.32)return false;
  }
  return true;
+}
+function vehiclePathHitsPedestrian(from,to,rotation){
+ const distance=from.distanceTo(to),steps=Math.max(1,Math.ceil(distance/.06));
+ for(let step=1;step<=steps;step++){
+  const sample=from.clone().lerp(to,step/steps);
+  for(const npc of pedestrianActors){
+   if(npc.root.visible&&vehicleOverlapsPedestrian(sample,rotation,npc))return true;
+  }
+ }
+ return false;
 }
 function vehicleCollisionAt(position,rotation,ignoreRoot=null){
  if(position.x< -239||position.x>239||position.z< -229||position.z>229)return 'city boundary';
@@ -824,10 +834,12 @@ $('mobile-interact').addEventListener('pointerdown',unlockGameAudio,{passive:tru
 $('mobile-interact').onclick=onInteract;
 
 function resize(){
- const width=Math.max(1,Math.round(window.visualViewport?.width||innerWidth));
- const height=Math.max(1,Math.round(window.visualViewport?.height||innerHeight));
+ // Use the actual layout viewport; visualViewport can shrink unpredictably when iOS Safari chrome expands.
+ const width=Math.max(1,Math.round(document.documentElement.clientWidth||window.innerWidth));
+ const height=Math.max(1,Math.round(window.innerHeight||document.documentElement.clientHeight));
  camera.aspect=width/height;camera.updateProjectionMatrix();
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(width,height);
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.65));renderer.setSize(width,height);
+ renderer.domElement.style.width='100vw';renderer.domElement.style.height='100dvh';
 }
 window.addEventListener('resize',resize);
 window.addEventListener('orientationchange',()=>setTimeout(resize,120));
@@ -849,7 +861,7 @@ function animate(){
    let blocked='';
    for(let step=1;step<=steps;step++){
     const candidate={x:t.root.position.x+(nextX-t.root.position.x)*step/steps,z:t.root.position.z};
-    blocked=vehicleCollisionAt(candidate,heading,t.root);
+    blocked=vehiclePathHitsPedestrian(t.root.position,candidate,heading)?'pedestrian':vehicleCollisionAt(candidate,heading,t.root);
     if(blocked)break;
     t.root.position.x=candidate.x;
    }
@@ -867,7 +879,7 @@ function animate(){
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
    const oldRotation=playerCar.rotation.y;
-   const steeredRotation=oldRotation-steering*1.45*dt*(driveSpeed>=0?1:-1);
+   const steeredRotation=oldRotation+steering*1.45*dt*(driveSpeed>=0?1:-1);
    if(!vehicleCollisionAt(playerCar.position,steeredRotation,playerCar))playerCar.rotation.y=steeredRotation;
    const oldPosition=playerCar.position.clone();
    const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
@@ -876,7 +888,7 @@ function animate(){
    let collision='';
    for(let step=1;step<=steps;step++){
     const candidate=oldPosition.clone().lerp(next,step/steps);
-    collision=vehicleCollisionAt(candidate,playerCar.rotation.y,playerCar);
+    collision=vehiclePathHitsPedestrian(playerCar.position,candidate,playerCar.rotation.y)?'pedestrian':vehicleCollisionAt(candidate,playerCar.rotation.y,playerCar);
     if(collision)break;
     playerCar.position.copy(candidate);
    }
@@ -889,7 +901,7 @@ function animate(){
    $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H · FUEL '+Math.round(fuel)+'%';
   }else{
    $('drive-info').textContent='ON FOOT';
-   const forward=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+joystickY;
+   const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY;
    const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX;
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
    const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
