@@ -206,7 +206,7 @@ function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
-function currentObjective(){return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:null;}
+function currentObjective(){return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:null;}
 const objectiveBeacon=new THREE.Group();
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
 beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
@@ -232,9 +232,9 @@ function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
  updateHealthUI();
  $('stats').textContent='TRUST '+Math.round(trust)+' · HEAT '+Math.round(heat);
- const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','CHAPTER TWO COMPLETE'];
- const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','The envelope is delivered. Explore Albuquerque, drive around, or recover at the diner.'];
- const step=Math.min(missionStep,4);
+ const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','CHAPTER TWO COMPLETE'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','You reached a new understanding. Explore Albuquerque, take a shift, or recover at the diner.'];
+ const step=Math.min(missionStep,6);
  $('mission-title').textContent=titles[step];
  $('mission-copy').textContent=copies[step];
  const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','38%','68%','100%'][step];
@@ -266,16 +266,17 @@ function interact(target){
  }else if(target.type==='talk'){
   const dinerChoices=[];
   if(missionStep===1)dinerChoices.push({label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
-  else if(missionStep===3)dinerChoices.push({label:'Hand over the sealed envelope (complete delivery)',run:()=>{missionStep=4;cash+=900;heat=Math.max(0,heat-3);trust=Math.min(100,trust+5);showToast('Delivery complete. +$900 · Heat reduced.');saveGame();updateHUD();}});
+  else if(missionStep===3)dinerChoices.push({label:'Hand over the sealed envelope (complete delivery)',run:()=>{missionStep=4;cash+=900;heat=Math.max(0,heat-3);trust=Math.min(100,trust+5);showToast('Delivery complete. +$900 · A contact is waiting at the gas station.');saveGame();updateHUD();}});
   else if(missionStep===0)dinerChoices.push({label:'You should speak to Jesse at the car wash first.',run:()=>{showToast('Jesse is waiting at the car wash.');}});
   dinerChoices.push({label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}});
   dinerChoices.push({label:'Buy a meal (+60 health, $250)',run:()=>{if(healPlayer(60,250))showToast('You feel much better.');}});
   openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',dinerChoices);
  }else if(target.type==='gas'){
-  openDialogue('GAS STATION','A quiet stop beside the highway. The attendant offers a first-aid kit and a chance to regroup.',[
-   {label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}},
-   {label:'Refuel and rest (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}}
-  ]);
+  const gasChoices=[];
+  if(missionStep===4)gasChoices.push({label:'Meet the stranger (continue the story)',run:()=>{missionStep=5;trust=Math.min(100,trust+6);heat=Math.min(100,heat+3);showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}});
+  gasChoices.push({label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}});
+  gasChoices.push({label:'Rest and recover (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}});
+  openDialogue('GAS STATION','A quiet stop beside the highway. Someone has been waiting here, asking for you.',gasChoices);
  }else if(target.type==='police'){
   if(policeHelpUsed)openDialogue('OFFICER','I already gave you a warning. Keep moving and stay out of trouble.',[{label:'Walk away',run:()=>{}}]);
   else if(heat>=30)openDialogue('OFFICER','We have heard a few things about you. You can cooperate, or make this more difficult.',[
@@ -289,10 +290,14 @@ function interact(target){
  }else if(target.type==='warehouse'){
   if(missionStep<2)openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
   else if(missionStep===2)openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[
-   {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat+=2;cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800 · A delivery is waiting.');saveGame();updateHUD();}},
-   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat+=8;missionStep=3;showToast('You got what you came for. +$2,400 · A delivery is waiting.');saveGame();updateHUD();}}
+   {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat=Math.min(100,heat+2);cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800 · A delivery is waiting.');saveGame();updateHUD();}},
+   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat=Math.min(100,heat+8);missionStep=3;showToast('You got what you came for. +$2,400 · A delivery is waiting.');saveGame();updateHUD();}}
   ]);
-  else openDialogue('WAREHOUSE CONTACT','The warehouse is secure for now. The delivery is your next move.',[{label:'Understood',run:()=>{}}]);
+  else if(missionStep===5)openDialogue('WAREHOUSE CONTACT','The stranger has a proposal. It is a chance to build trust, but every deal leaves a trace.',[
+   {label:'Accept the quiet deal (+$1,600, trust +10)',run:()=>{cash+=1600;trust=Math.min(100,trust+10);heat=Math.min(100,heat+4);missionStep=6;showToast('Deal made. +$1,600.');saveGame();updateHUD();}},
+   {label:'Walk away (heat -5)',run:()=>{heat=Math.max(0,heat-5);missionStep=6;showToast('You leave without making a deal.');saveGame();updateHUD();}}
+  ]);
+  else openDialogue('WAREHOUSE CONTACT','The warehouse is quiet for now. You have completed the second chapter.',[{label:'Understood',run:()=>{}}]);
  }
 }
 function updateActive(){
