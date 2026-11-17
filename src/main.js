@@ -3,6 +3,8 @@ import * as THREE from 'three';
 
 const app = document.querySelector('#app');
 const $ = (id) => document.getElementById(id);
+document.addEventListener('contextmenu',event=>event.preventDefault());
+document.addEventListener('selectstart',event=>event.preventDefault());
 let gameReady=false;
 function showStartupError(message){
  const loading=$('loading');if(!loading)return;
