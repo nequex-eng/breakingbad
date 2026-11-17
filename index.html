@@ -12,7 +12,12 @@
       <div id="loading"><div class="loader-mark">ABQ</div><div>ENTERING ALBUQUERQUE</div></div>
       <div id="hud">
         <header class="topbar"><div class="brand"><span class="brand-mark">ABQ</span><span>ALBUQUERQUE<br><b>STORIES</b></span></div><div class="chapter">CHAPTER 01 <span>·</span> THE FIRST MOVE</div><div class="cash"><small>CASH</small><strong id="cash">$7,300</strong><small id="stats">TRUST 50 · HEAT 8</small></div><div class="drive-info" id="drive-info">ON FOOT</div></header>
-        <section class="mission"><div class="eyebrow">CURRENT OBJECTIVE</div><h1 id="mission-title">A DIFFERENT KIND OF FUTURE</h1><p id="mission-copy">Head to the car wash. Someone is waiting to talk.</p><small class="objective-distance" id="objective-distance">TARGET DISTANCE · —</small><div class="objective-progress"><i></i></div></section>
+        <section class="mission collapsed" id="mission">
+          <button class="mission-toggle" id="mission-toggle" type="button" aria-expanded="false" aria-controls="mission-details">
+            <span class="eyebrow">CURRENT OBJECTIVE</span><span class="mission-chevron">＋</span>
+          </button>
+          <div id="mission-details"><h1 id="mission-title">A DIFFERENT KIND OF FUTURE</h1><p id="mission-copy">Head to the car wash. Someone is waiting to talk.</p><small class="objective-distance" id="objective-distance">TARGET DISTANCE · —</small><div class="objective-progress"><i></i></div></div>
+        </section>
         <canvas id="minimap" width="220" height="220" aria-label="Nearby map"></canvas>
         <small class="map-hint">TAP MAP TO EXPAND</small>
         <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false">SOUND OFF</button>
@@ -27,7 +32,12 @@
         <div class="interaction" id="interaction"><kbd>E</kbd><span id="interaction-copy">INTERACT</span></div>
         <div class="toast" id="toast"></div>
         <div class="controls"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> MOVE</span><span><kbd>SHIFT</kbd> WALK FASTER</span><span><kbd>E</kbd> INTERACT</span><span><kbd>DRAG</kbd> LOOK</span><span><kbd>H</kbd> HORN (DRIVING)</span><span><kbd>M</kbd> MAP</span></div>
-        <div class="mobile-controls"><button id="mobile-forward">▲</button><button id="mobile-left">◀</button><button id="mobile-back">▼</button><button id="mobile-right">▶</button><button id="mobile-interact">E</button></div>
+        <div class="mobile-controls">
+          <div class="mobile-joystick" id="mobile-joystick" role="application" aria-label="Movement joystick">
+            <div class="joystick-ring"><div class="joystick-knob" id="joystick-knob"></div></div>
+          </div>
+          <button id="mobile-interact" class="mobile-interact">E</button>
+        </div>
         <div class="dialogue hidden" id="dialogue"><div class="dialogue-card"><div class="dialogue-speaker" id="speaker">UNKNOWN</div><p id="dialogue-text"></p><div class="dialogue-actions" id="dialogue-actions"></div><button class="close-dialogue" id="close-dialogue">CLOSE ×</button></div></div>
         <div class="vignette"></div>
       </div>
