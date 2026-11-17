@@ -39,3 +39,12 @@ kbd{font-family:inherit;font-size:9px;color:#f3e8cf;background:#34382f;border:1p
 #app>canvas{position:fixed!important;inset:0!important;display:block;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none;max-height:none;touch-action:none}
 @supports (-webkit-touch-callout:none){html,body{width:100%;height:100%;height:-webkit-fill-available;overflow:hidden}#app{position:fixed;inset:0;width:100%;height:100%;height:100dvh;padding:0}#app>canvas{position:fixed;inset:0;width:100vw;height:100%;height:100dvh}}
 @media(display-mode:standalone){#app{padding:0}#hud{inset:0}.topbar{padding-top:calc(17px + env(safe-area-inset-top))}.mobile-joystick{bottom:calc(22px + env(safe-area-inset-bottom))}.mobile-controls .mobile-interact{bottom:calc(52px + env(safe-area-inset-bottom))}}
+
+
+/* Unified viewport contract for desktop, Safari and installed iOS web apps. */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+#app{position:fixed!important;inset:0 auto auto 0!important;width:var(--viewport-width,100vw)!important;height:var(--viewport-height,100dvh)!important;min-height:0!important;padding:0!important;overflow:hidden!important}
+#app>canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}
+#hud{position:absolute!important;inset:0!important;width:100%;height:100%;overflow:hidden;touch-action:none}
+@media(display-mode:standalone){html,body{width:100%;height:100%;overflow:hidden}#app{width:100%!important;height:100%!important;height:100dvh!important}}
+@supports (-webkit-touch-callout:none){html,body{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important}#app{position:fixed!important;inset:0 auto auto 0!important;width:var(--viewport-width,100vw)!important;height:var(--viewport-height,100dvh)!important}#app>canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important}}

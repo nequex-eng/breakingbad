@@ -240,7 +240,7 @@ function pedestrianBlockedByAnyVehicle(x,z){
  return vehicleRegistry.some(vehicle=>vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,probe));
 }
 function separatePedestriansFromAllVehicles(){
- for(const npc of pedestrianActors){
+ for(const npc of allPedestrianActors){
   if(!npc.root.visible)continue;
   for(const vehicle of vehicleRegistry){
    if(!vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,npc))continue;
@@ -278,20 +278,23 @@ function vehicleOverlapsVehicle(position,rotation,otherRoot){
  return true;
 }
 function vehiclePathHitsPedestrian(from,to,rotation){
- const distance=from.distanceTo(to),steps=Math.max(1,Math.ceil(distance/.06));
- for(let step=1;step<=steps;step++){
-  const sample=from.clone().lerp(to,step/steps);
-  for(const npc of pedestrianActors){
-   if(npc.root.visible&&vehicleOverlapsPedestrian(sample,rotation,npc))return true;
+ const start=from?.isVector3?from:new THREE.Vector3(Number(from?.x)||0,0,Number(from?.z)||0);
+ const end=to?.isVector3?to:new THREE.Vector3(Number(to?.x)||0,0,Number(to?.z)||0);
+ const distance=Math.hypot(end.x-start.x,end.z-start.z);
+ const steps=Math.max(1,Math.ceil(distance/.10));
+ for(let step=0;step<=steps;step++){
+  const sample=start.clone().lerp(end,step/steps);
+  for(const pedestrian of allPedestrianActors){
+   if(pedestrian.root.visible&&vehicleOverlapsPedestrian(sample,rotation,pedestrian))return true;
   }
  }
  return false;
 }
 function vehicleCollisionAt(position,rotation,ignoreRoot=null){
- if(position.x< -239||position.x>239||position.z< -229||position.z>229)return 'city boundary';
+ if(!movingVehicleRoots.includes(ignoreRoot)&&(position.x< -239||position.x>239||position.z< -229||position.z>229))return 'city boundary';
  for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,b))return 'building';
  for(const other of vehicleRegistry){if(other===ignoreRoot)continue;if(vehicleOverlapsVehicle(position,rotation,other))return 'another vehicle';}
- for(const npc of pedestrianActors)if(npc.root.visible&&vehicleOverlapsPedestrian(position,rotation,npc))return 'pedestrian';
+ for(const pedestrian of allPedestrianActors)if(pedestrian.root.visible&&vehicleOverlapsPedestrian(position,rotation,pedestrian))return 'pedestrian';
  return '';
 }
 
@@ -352,6 +355,7 @@ const driverNPC=makeNPC(69,43,0x4f6970,0x303841,0x9b745b);
 const motelClerkNPC=makeNPC(-137,-66,0x70634f,0x343a43,0xb98e6e);
 const warehouseArchivistNPC=makeNPC(108,-51,0x706b58,0x343a43,0x9c775d);
 const pedestrianActors=[jesseNPC,dinerNPC,warehouseNPC,policeNPC,gasContactNPC,motelNPC,...ambientNPCs,witnessNPC,courierNPC,driverNPC,motelClerkNPC,warehouseArchivistNPC];
+const allPedestrianActors=[{root:player},...pedestrianActors];
 
 const locations=[
  {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:13,type:'mission'},
@@ -410,7 +414,7 @@ const salvageItems=[
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
@@ -446,7 +450,8 @@ function updateObjectiveDistance(){
 }
 
 const keys={};
-let yaw=Math.PI, pitch=.25, dragging=false, lastX=0,lastY=0;
+let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI, pitch=-.08, dragging=false, lastX=0,lastY=0;
+player.rotation.y=yaw;
 const cameraTarget=new THREE.Vector3();
 
 // Keep the follow camera outside the main building shells instead of letting it clip through walls.
@@ -778,9 +783,8 @@ $('world-map').addEventListener('click',e=>{
 });
 const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
 $('map-close').onclick=()=>setMapOpen(false);
-const viewButton=$('view-toggle');if(viewButton)viewButton.remove();
 function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
-function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y+Math.PI;showToast('You stepped out of the vehicle.');updateActive();}
+function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
 function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item')){interact(active);return;}if(player.position.distanceTo(playerCar.position)<4.8){enterVehicle();return;}if(active)interact(active);}
 
 window.addEventListener('keydown',e=>{
@@ -788,7 +792,6 @@ window.addEventListener('keydown',e=>{
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  if(e.code==='KeyM'){setMapOpen(!mapOpen);return;}
   if(e.code==='KeyH'&&driving){playHorn();return;}
- if(e.code==='KeyV'){toggleView();return;}
  if(e.code==='Escape'){if(mapOpen)setMapOpen(false);else closeDialogue();return;}
  if(mapOpen)return;
  keys[e.code]=true;
@@ -802,7 +805,7 @@ renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.cli
 renderer.domElement.addEventListener('pointerup',()=>dragging=false);
 renderer.domElement.addEventListener('pointermove',e=>{
  if(!dragging)return;
- yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ yaw+=(e.clientX-lastX)*.004; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.003));
  lastX=e.clientX;lastY=e.clientY;
 });
 function bindHold(id,code){
@@ -834,16 +837,23 @@ $('mobile-interact').addEventListener('pointerdown',unlockGameAudio,{passive:tru
 $('mobile-interact').onclick=onInteract;
 
 function resize(){
- // Use the actual layout viewport; visualViewport can shrink unpredictably when iOS Safari chrome expands.
- const width=Math.max(1,Math.round(document.documentElement.clientWidth||window.innerWidth));
- const height=Math.max(1,Math.round(window.innerHeight||document.documentElement.clientHeight));
+ const viewport=window.visualViewport;
+ const width=Math.max(1,Math.round(viewport?.width||window.innerWidth||document.documentElement.clientWidth));
+ const height=Math.max(1,Math.round(viewport?.height||window.innerHeight||document.documentElement.clientHeight));
  camera.aspect=width/height;camera.updateProjectionMatrix();
- renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.65));renderer.setSize(width,height);
- renderer.domElement.style.width='100vw';renderer.domElement.style.height='100dvh';
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.65));
+ renderer.setSize(width,height,false);
+ app.style.setProperty('--viewport-width',width+'px');
+ app.style.setProperty('--viewport-height',height+'px');
+ renderer.domElement.style.width='100%';
+ renderer.domElement.style.height='100%';
 }
 window.addEventListener('resize',resize);
 window.addEventListener('orientationchange',()=>setTimeout(resize,120));
 window.visualViewport?.addEventListener('resize',resize);
+window.visualViewport?.addEventListener('scroll',resize);
+window.addEventListener('pageshow',resize);
+resize();
 const clock=new THREE.Clock();
 let lastAutoSave=0,uiRefreshClock=0;
 function animate(){
@@ -854,18 +864,32 @@ function animate(){
  if(!dialogOpen&&!mapOpen){
   crashCooldown=Math.max(0,crashCooldown-dt);
   trafficCars.forEach(t=>{
-   let nextX=t.root.position.x+t.direction*t.speed*dt;
-   if(nextX>265)nextX=-265;if(nextX< -265)nextX=265;
+   const start=t.root.position.clone();
+   let nextX=start.x+t.direction*t.speed*dt;
+   let wrapped=false;
+   if(nextX>265){nextX=-265;wrapped=true;}
+   if(nextX< -265){nextX=265;wrapped=true;}
    const heading=t.direction>0?Math.PI/2:-Math.PI/2;
-   const travel=Math.abs(nextX-t.root.position.x),steps=Math.max(1,Math.ceil(travel/.16));
+   const end=new THREE.Vector3(nextX,start.y,start.z);
    let blocked='';
-   for(let step=1;step<=steps;step++){
-    const candidate={x:t.root.position.x+(nextX-t.root.position.x)*step/steps,z:t.root.position.z};
-    blocked=vehiclePathHitsPedestrian(t.root.position,candidate,heading)?'pedestrian':vehicleCollisionAt(candidate,heading,t.root);
-    if(blocked)break;
-    t.root.position.x=candidate.x;
+   if(wrapped){
+    blocked=vehicleCollisionAt(end,heading,t.root);
+    if(!blocked)t.root.position.copy(end);
+   }else{
+    const travel=Math.abs(nextX-start.x),steps=Math.max(1,Math.ceil(travel/.12));
+    let lastSafe=start.clone();
+    for(let step=1;step<=steps;step++){
+     const candidate=start.clone().lerp(end,step/steps);
+     blocked=vehiclePathHitsPedestrian(lastSafe,candidate,heading)?'pedestrian':vehicleCollisionAt(candidate,heading,t.root);
+     if(blocked)break;
+     t.root.position.copy(candidate);
+     lastSafe.copy(candidate);
+    }
    }
-   if(blocked&&blocked!=='pedestrian')t.direction*=-1;
+   if(blocked){
+    t.root.position.copy(start);
+    if(blocked!=='pedestrian')t.direction*=-1;
+   }
    t.root.rotation.y=t.direction>0?Math.PI/2:-Math.PI/2;
   });
   separatePedestriansFromAllVehicles();
@@ -879,7 +903,7 @@ function animate(){
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
    const oldRotation=playerCar.rotation.y;
-   const steeredRotation=oldRotation+steering*1.45*dt*(driveSpeed>=0?1:-1);
+   const steeredRotation=oldRotation-steering*1.45*dt*(driveSpeed>=0?1:-1);
    if(!vehicleCollisionAt(playerCar.position,steeredRotation,playerCar))playerCar.rotation.y=steeredRotation;
    const oldPosition=playerCar.position.clone();
    const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
@@ -905,13 +929,13 @@ function animate(){
    const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX;
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
    const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-   const right=new THREE.Vector3(direction.z,0,-direction.x);
+   const right=new THREE.Vector3(-direction.z,0,direction.x);
    const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
    const obstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,22,13,8.5],[100,-70,20,16],[78,24,10,7],[-145,-76,28.5,7.5],[19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5]];
    const isBlocked=(x,z)=>obstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
-   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||trafficCars.some(t=>Math.hypot(x-t.root.position.x,z-t.root.position.z)<2.7);
+   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<3.0);
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
    if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
@@ -966,9 +990,11 @@ function animate(){
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  const cameraYaw=driving?playerCar.rotation.y:yaw;
- const camDist=driving?13.5:8.8,cameraHeight=driving?2.15:1.55;
- cameraTarget.set(player.position.x,player.position.y+(driving?1.75:2.35),player.position.z);
- const offset=new THREE.Vector3(-Math.sin(cameraYaw)*camDist,cameraHeight,-Math.cos(cameraYaw)*camDist);
+ const camDist=driving?13.5:8.8;
+ const cameraPitch=driving?pitch*.35:pitch;
+ cameraTarget.set(player.position.x,player.position.y+(driving?2.85:1.82),player.position.z);
+ const horizontalDistance=camDist*Math.cos(cameraPitch);
+ const offset=new THREE.Vector3(-Math.sin(cameraYaw)*horizontalDistance,Math.sin(cameraPitch)*camDist,-Math.cos(cameraYaw)*horizontalDistance);
  const desired=keepCameraOutsideWalls(cameraTarget,cameraTarget.clone().add(offset));
  camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(cameraTarget);
  landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
