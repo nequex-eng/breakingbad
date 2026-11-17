@@ -34,7 +34,8 @@ const materials = {
   rust: mat(0x985d3e), teal: mat(0x527b79), dark: mat(0x343a37),
   glass: new THREE.MeshStandardMaterial({color:0x314b50, roughness:0.25, metalness:0.25}),
   green: mat(0x566348), cactus: mat(0x53694d), yellow: mat(0xc79b4c),
-  red: mat(0x9d493b), blue: mat(0x506a7c)
+  red: mat(0x9d493b), blue: mat(0x506a7c),
+  eyeWhite: mat(0xe9e5d9), pupil: mat(0x1b211f), shoe: mat(0x242725)
 };
 
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(520,520), materials.sand);
@@ -167,8 +168,18 @@ const body= new THREE.Group(); player.add(body);
 cylinder(body,0,1.35,0,.42,.5,1.05,materials.blue,9);
 const head=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),mat(0xb98e6e));
 head.position.y=2.12; head.castShadow=true; body.add(head);
+cylinder(body,0,1.84,0,.13,.13,.28,mat(0xb98e6e),8);
 const hair=new THREE.Mesh(new THREE.SphereGeometry(.35,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);
 hair.position.y=2.27; body.add(hair);
+for(const side of [-1,1]){
+ const eye=new THREE.Mesh(new THREE.SphereGeometry(.052,8,6),materials.eyeWhite);eye.position.set(side*.115,2.16,.299);body.add(eye);
+ const pupil=new THREE.Mesh(new THREE.SphereGeometry(.025,8,6),materials.pupil);pupil.position.set(side*.115,2.16,.344);body.add(pupil);
+ box(body,side*.115,2.245,.286,.12,.035,.035,materials.dark,false);
+ const ear=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),mat(0xb98e6e));ear.position.set(side*.326,2.1,0);body.add(ear);
+ box(body,side*.2,.08,.12,.34,.16,.55,materials.shoe);
+}
+const nose=new THREE.Mesh(new THREE.ConeGeometry(.065,.13,6),mat(0xb98e6e));nose.position.set(0,2.08,.34);nose.rotation.x=Math.PI/2;body.add(nose);
+box(body,0,1.88,.315,.14,.025,.025,materials.dark,false);
 const playerArms=[],playerLegs=[];
 for(const side of [-1,1]){
  const arm=cylinder(body,side*.48,1.3,0,.13,.16,.82,materials.blue,8); arm.rotation.z=side*.12;playerArms.push(arm);
@@ -180,7 +191,16 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
  const root=new THREE.Group();root.position.set(x,0,z);scene.add(root);
  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.34,.43,1.05,9),mat(shirt));torso.position.y=1.35;torso.castShadow=true;root.add(torso);
  const head=new THREE.Mesh(new THREE.SphereGeometry(.31,12,10),mat(skin));head.position.y=2.12;head.castShadow=true;root.add(head);
+ cylinder(root,0,1.84,0,.12,.12,.25,mat(skin),8);
  const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);hairCap.position.y=2.27;root.add(hairCap);
+ const faceSkin=mat(skin);
+ for(const side of [-1,1]){
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(.047,8,6),materials.eyeWhite);eye.position.set(side*.105,2.15,.274);root.add(eye);
+  const pupil=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),materials.pupil);pupil.position.set(side*.105,2.15,.315);root.add(pupil);
+  const ear=new THREE.Mesh(new THREE.SphereGeometry(.065,8,6),faceSkin);ear.position.set(side*.3,2.1,0);root.add(ear);
+  box(root,side*.19,.075,.12,.32,.15,.5,materials.shoe);
+ }
+ const nose=new THREE.Mesh(new THREE.ConeGeometry(.055,.12,6),faceSkin);nose.position.set(0,2.08,.31);nose.rotation.x=Math.PI/2;root.add(nose);
  const arms=[],legs=[];
  for(const side of [-1,1]){const arm=cylinder(root,side*.43,1.35,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;arms.push(arm);legs.push(cylinder(root,side*.19,.43,0,.15,.18,.75,mat(pants),8));}
  return {root,phase:Math.random()*6,arms,legs};
