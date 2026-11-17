@@ -343,8 +343,10 @@ for(const side of [-1,1]){
  const pupil=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),materials.pupil);pupil.position.set(side*.115,2.16,.343);body.add(pupil);
  // Distinctive rectangular glasses, bridge and temples.
  box(body,side*.115,2.16,.366,.205,.145,.035,glassMat,false);
- box(body,side*.115,2.16,.39,.165,.105,.018,materials.eyeWhite,false);
- box(body,side*.115,2.16,.405,.018,.014,.012,materials.pupil,false);
+ box(body,side*.115,2.225,.39,.205,.025,.025,glassMat,false);
+ box(body,side*.115,2.095,.39,.205,.025,.025,glassMat,false);
+ box(body,side*.215,2.16,.39,.025,.155,.025,glassMat,false);
+ box(body,side*.015,2.16,.39,.025,.155,.025,glassMat,false);
  box(body,side*.225,2.16,.335,.09,.025,.025,glassMat,false);
  const ear=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),skinMat);ear.position.set(side*.326,2.1,0);body.add(ear);
 }
