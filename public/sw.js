@@ -1,4 +1,4 @@
-const CACHE="abq-stories-shell-v1";
+const CACHE="abq-stories-shell-v2";
 const SHELL=["/","/index.html","/manifest.webmanifest","/icons/abq.svg"];
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("abq-stories-")&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
