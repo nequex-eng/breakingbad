@@ -228,12 +228,25 @@ function vehicleOverlapsBox(position,b){
 }
 function vehicleOverlapsPedestrian(position,rotation,npc){
  const dx=npc.root.position.x-position.x,dz=npc.root.position.z-position.z;
- if(dx*dx+dz*dz>30)return false;
+ if(dx*dx+dz*dz>36)return false;
  const c=Math.cos(rotation),s=Math.sin(rotation);
  const localX=dx*c-dz*s,localZ=dx*s+dz*c;
- const nearestX=THREE.MathUtils.clamp(localX,-1.62,1.62),nearestZ=THREE.MathUtils.clamp(localZ,-2.88,2.88);
+ const nearestX=THREE.MathUtils.clamp(localX,-1.72,1.72),nearestZ=THREE.MathUtils.clamp(localZ,-3.02,3.02);
  const side=localX-nearestX,front=localZ-nearestZ;
- return side*side+front*front<1.08*1.08;
+ return side*side+front*front<1.22*1.22;
+}
+function pedestrianBlockedByAnyVehicle(x,z){
+ const probe={root:{position:new THREE.Vector3(x,0,z)}};
+ return vehicleRegistry.some(vehicle=>vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,probe));
+}
+function movePedestrianSafely(npc,x,z){
+ if(!pedestrianBlockedByAnyVehicle(x,z)){npc.root.position.x=x;npc.root.position.z=z;return true;}
+ const dx=x-npc.root.position.x,dz=z-npc.root.position.z,len=Math.hypot(dx,dz)||1;
+ for(const sign of [1,-1]){
+  const sx=npc.root.position.x+(-dz/len)*sign*.85,sz=npc.root.position.z+(dx/len)*sign*.85;
+  if(!pedestrianBlockedByAnyVehicle(sx,sz)){npc.root.position.x=sx;npc.root.position.z=sz;return true;}
+ }
+ return false;
 }
 function vehicleOverlapsVehicle(position,rotation,otherRoot){
  const dx=otherRoot.position.x-position.x,dz=otherRoot.position.z-position.z;
@@ -359,7 +372,7 @@ const salvageItems=[
  makeActivityItem('salvage-radio','Old radio',164,46,0x586d60,'salvage'),
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
-for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=missionStep>=25&&!item.collected;}
+for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
@@ -586,7 +599,7 @@ function interact(target){
    if(evidenceCollected.length===evidenceItems.length){missionStep=23;showToast('All four pieces secured. Take them to the warehouse.');}
    updateHUD();saveGame();return;
   }
-  if(item.kind==='salvage'&&missionStep>=25&&!item.collected){
+  if(item.kind==='salvage'&&!item.collected){
    item.collected=true;item.root.visible=false;salvageCollected.push(item.id);cash+=275;
    showToast(item.label+' recovered · +$275');
    if(salvageCollected.length===salvageItems.length)showToast('Neighborhood salvage route complete · +$1,375 earned');
@@ -656,7 +669,7 @@ function updateActive(){
   if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
   if(missionStep===22){for(const item of evidenceItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'COLLECT '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
   if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
-  if(missionStep>=25){for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
+  for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
   if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
   else if(player.position.distanceTo(playerCar.position)<4.8){el.classList.add('visible');$('interaction-copy').textContent=' ENTER SEDAN';}
   else el.classList.remove('visible');
@@ -873,17 +886,18 @@ function animate(){
    for(const movingCar of movingVehicleRoots){const dx=npc.root.position.x-movingCar.position.x,dz=npc.root.position.z-movingCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
    if(driving){const dx=npc.root.position.x-playerCar.position.x,dz=npc.root.position.z-playerCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
    if(nearestDistance<8.5){
-    const length=Math.hypot(awayX,awayZ)||1;awayX/=length;awayZ/=length;
-    npc.root.position.x+=awayX*3.8*dt;npc.root.position.z+=awayZ*3.8*dt;
-    npc.home.x+=awayX*3.8*dt;npc.home.z+=awayZ*3.8*dt;
-    npc.root.rotation.y=Math.atan2(awayX,awayZ);
-    const run=Math.sin(animTime*.025)*.48;npc.legs[0].rotation.x=run;npc.legs[1].rotation.x=-run;
-    return;
-   }
+     const length=Math.hypot(awayX,awayZ)||1;awayX/=length;awayZ/=length;
+     const moved=movePedestrianSafely(npc,npc.root.position.x+awayX*3.8*dt,npc.root.position.z+awayZ*3.8*dt);
+     if(moved){npc.home.x+=awayX*3.8*dt;npc.home.z+=awayZ*3.8*dt;}
+     npc.root.rotation.y=Math.atan2(awayX,awayZ);
+     const run=Math.sin(animTime*.025)*.48;npc.legs[0].rotation.x=moved?run:0;npc.legs[1].rotation.x=moved?-run:0;
+     return;
+    }
    const distance=npc.root.position.distanceTo(player.position);
    if(distance<7){npc.root.rotation.y=Math.atan2(player.position.x-npc.root.position.x,player.position.z-npc.root.position.z);npc.legs.forEach(leg=>leg.rotation.x=0);return;}
    const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;
-   npc.root.position.x=npc.home.x+Math.sin(t)*2.1;npc.root.position.z=npc.home.z+Math.cos(t)*1.15;
+   const wanderX=npc.home.x+Math.sin(t)*2.1,wanderZ=npc.home.z+Math.cos(t)*1.15;
+    movePedestrianSafely(npc,wanderX,wanderZ);
    if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){
     npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);
     const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;
@@ -892,7 +906,8 @@ function animate(){
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  if(firstPerson){
-  const origin=driving?playerCar.localToWorld(new THREE.Vector3(0,1.72,.38)):new THREE.Vector3(player.position.x,1.72,player.position.z);
+  if(driving)yaw=playerCar.rotation.y;
+   const origin=driving?playerCar.localToWorld(new THREE.Vector3(0,1.72,1.02)):new THREE.Vector3(player.position.x,1.72,player.position.z);
   const lookDirection=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
   camera.position.lerp(origin,1-Math.pow(.001,dt));camera.lookAt(origin.clone().addScaledVector(lookDirection,24));
  }else{
