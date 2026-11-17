@@ -189,7 +189,37 @@ function car(x,z,color,rotation=0){
  }
  return g;
 }
-const playerCar=car(-6,13,0x8d8d86,0); car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
+const playerCar=car(-6,13,0xe8e4d6,0);
+// Replace the starter sedan mesh with a classic 1980s Winnebago-style RV.
+while(playerCar.children.length)playerCar.remove(playerCar.children[0]);
+const rvBody=mat(0xe5e0d1),rvLower=mat(0x777b70),rvGreen=mat(0x4d6856),rvGlass=mat(0x26383b),rvChrome=mat(0xb5b5a7);
+box(playerCar,0,1.68,-.18,2.72,2.55,7.55,rvBody);
+box(playerCar,0,.48,-.18,2.78,.34,7.58,rvLower);
+box(playerCar,0,1.05,-.18,2.79,.23,7.62,rvGreen);
+box(playerCar,0,2.93,-.18,2.66,.16,7.42,rvBody);
+box(playerCar,0,2.72,3.13,2.58,.72,1.42,rvBody);
+box(playerCar,0,2.36,3.88,2.18,.92,.08,rvGlass);
+box(playerCar,0,1.98,3.94,2.2,.09,.1,rvChrome);
+box(playerCar,0,.88,3.91,1.55,.24,.12,rvChrome);
+box(playerCar,-.72,1.35,3.95,.28,.22,.12,materials.yellow);
+box(playerCar,.72,1.35,3.95,.28,.22,.12,materials.yellow);
+box(playerCar,0,1.52,-3.98,2.25,.5,.08,rvLower);
+for(const side of [-1,1]){
+ box(playerCar,side*1.372,2.03,-2.35,.045,.92,1.18,rvGlass);
+ box(playerCar,side*1.372,2.03,-.48,.045,.92,1.18,rvGlass);
+ box(playerCar,side*1.372,2.03,1.42,.045,.92,1.18,rvGlass);
+ box(playerCar,side*1.39,1.04,-.15,.035,.12,6.7,rvGreen);
+ box(playerCar,side*1.405,1.78,-.15,.035,.12,6.7,rvChrome);
+ for(const wz of [-2.65,2.55]){
+  const wheel=cylinder(playerCar,side*1.38,.57,wz,.57,.57,.3,materials.dark,14);wheel.rotation.z=Math.PI/2;
+  const hub=cylinder(playerCar,side*1.55,.57,wz,.22,.22,.31,rvChrome,12);hub.rotation.z=Math.PI/2;
+ }
+}
+box(playerCar,0,3.08,-.1,1.5,.12,2.2,rvLower);
+box(playerCar,0,3.22,-.1,.72,.12,.72,rvChrome);
+const rvRoofAntenna=cylinder(playerCar,.72,3.23,-2.8,.035,.035,.55,rvChrome,6);rvRoofAntenna.rotation.z=.2;
+box(playerCar,0,.35,-4.0,1.5,.38,.12,rvLower);
+car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
  {root:car(-210,-4,0x87918d,Math.PI/2),direction:1,speed:12},
@@ -212,7 +242,7 @@ function addParkedCarBlocker(x,z,rotation){
  const c=Math.abs(Math.cos(rotation)),s=Math.abs(Math.sin(rotation));
  vehicleBlockers.push({x,z,halfX:1.45*c+2.65*s,halfZ:1.45*s+2.65*c});
 }
-const VEHICLE_COLLISION_RADIUS=3.28;
+const VEHICLE_COLLISION_RADIUS=4.25;
 // Conservative circle-vs-box collision covers the whole sedan footprint at every steering angle.
 function vehicleOverlapsBox(position,b){
  const closestX=THREE.MathUtils.clamp(position.x,b.x-b.halfX,b.x+b.halfX);
@@ -225,7 +255,7 @@ function vehicleOverlapsPedestrian(position,rotation,npc){
  if(dx*dx+dz*dz>36)return false;
  const c=Math.cos(rotation),s=Math.sin(rotation);
  const localX=dx*c-dz*s,localZ=dx*s+dz*c;
- const nearestX=THREE.MathUtils.clamp(localX,-1.48,1.48),nearestZ=THREE.MathUtils.clamp(localZ,-2.72,2.72);
+ const nearestX=THREE.MathUtils.clamp(localX,-1.58,1.58),nearestZ=THREE.MathUtils.clamp(localZ,-3.95,3.95);
  const side=localX-nearestX,front=localZ-nearestZ;
  return side*side+front*front<1.35*1.35;
 }
@@ -292,28 +322,41 @@ function vehicleCollisionAt(position,rotation,ignoreRoot=null){
  return '';
 }
 
-// Player character, original low-poly civilian silhouette
+// Walter White-inspired player model: shaved head, wire-frame glasses, goatee and beige jacket.
 const player=new THREE.Group(); scene.add(player);
-const body= new THREE.Group(); player.add(body);
-cylinder(body,0,1.35,0,.42,.5,1.05,materials.blue,9);
-const head=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),mat(0xb98e6e));
-head.position.y=2.12; head.castShadow=true; body.add(head);
-cylinder(body,0,1.84,0,.13,.13,.28,mat(0xb98e6e),8);
-const hair=new THREE.Mesh(new THREE.SphereGeometry(.35,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);
-hair.position.y=2.27; body.add(hair);
+const body=new THREE.Group(); player.add(body);
+const skinMat=mat(0xc49a78),jacketMat=mat(0xb5a17d),shirtMat=mat(0xd7d5c8),pantsMat=mat(0x77735e),glassMat=mat(0x242b2b);
+cylinder(body,0,1.35,0,.43,.5,1.05,jacketMat,10);
+box(body,0,1.39,.255,.34,.72,.035,shirtMat,false);
 for(const side of [-1,1]){
- const eye=new THREE.Mesh(new THREE.SphereGeometry(.052,8,6),materials.eyeWhite);eye.position.set(side*.115,2.16,.299);body.add(eye);
- const pupil=new THREE.Mesh(new THREE.SphereGeometry(.025,8,6),materials.pupil);pupil.position.set(side*.115,2.16,.344);body.add(pupil);
- box(body,side*.115,2.245,.286,.12,.035,.035,materials.dark,false);
- const ear=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),mat(0xb98e6e));ear.position.set(side*.326,2.1,0);body.add(ear);
+ box(body,side*.16,1.73,.27,.19,.24,.045,jacketMat,false);
  box(body,side*.2,.08,.12,.34,.16,.55,materials.shoe);
 }
-const nose=new THREE.Mesh(new THREE.ConeGeometry(.065,.13,6),mat(0xb98e6e));nose.position.set(0,2.08,.34);nose.rotation.x=Math.PI/2;body.add(nose);
-box(body,0,1.88,.315,.14,.025,.025,materials.dark,false);
+const head=new THREE.Mesh(new THREE.SphereGeometry(.34,16,12),skinMat);
+head.position.y=2.12;head.castShadow=true;body.add(head);
+cylinder(body,0,1.84,0,.13,.13,.28,skinMat,8);
+// Clean-shaven scalp with a subtle close-cropped rim; no full hair cap.
+const scalp=new THREE.Mesh(new THREE.SphereGeometry(.343,16,10,0,Math.PI*2,0,Math.PI/2),mat(0x9c806a));
+scalp.position.y=2.275;body.add(scalp);
+for(const side of [-1,1]){
+ const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),materials.eyeWhite);eye.position.set(side*.115,2.16,.302);body.add(eye);
+ const pupil=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),materials.pupil);pupil.position.set(side*.115,2.16,.343);body.add(pupil);
+ // Distinctive rectangular glasses, bridge and temples.
+ box(body,side*.115,2.16,.366,.205,.145,.035,glassMat,false);
+ box(body,side*.115,2.16,.39,.165,.105,.018,materials.eyeWhite,false);
+ box(body,side*.115,2.16,.405,.018,.014,.012,materials.pupil,false);
+ box(body,side*.225,2.16,.335,.09,.025,.025,glassMat,false);
+ const ear=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),skinMat);ear.position.set(side*.326,2.1,0);body.add(ear);
+}
+box(body,0,2.16,.367,.045,.035,.035,glassMat,false);
+const nose=new THREE.Mesh(new THREE.ConeGeometry(.065,.13,6),skinMat);nose.position.set(0,2.08,.34);nose.rotation.x=Math.PI/2;body.add(nose);
+// Short dark goatee and moustache.
+const beard=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),mat(0x35322e));beard.scale.set(1,.58,.42);beard.position.set(0,1.91,.285);body.add(beard);
+box(body,0,2.005,.32,.22,.045,.07,glassMat,false);
 const playerArms=[],playerLegs=[];
 for(const side of [-1,1]){
- const arm=cylinder(body,side*.48,1.3,0,.13,.16,.82,materials.blue,8); arm.rotation.z=side*.12;playerArms.push(arm);
- const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,materials.dark,8);playerLegs.push(leg);
+ const arm=cylinder(body,side*.48,1.3,0,.14,.17,.82,jacketMat,8);arm.rotation.z=side*.12;playerArms.push(arm);
+ const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,pantsMat,9);playerLegs.push(leg);
 }
 player.position.set(0,0,0);
 
@@ -368,7 +411,7 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,38),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],cookState=['idle','cooking','ready','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
 let evidenceCollected=Array.isArray(saved.evidenceCollected)?saved.evidenceCollected:[],salvageCollected=Array.isArray(saved.salvageCollected)?saved.salvageCollected:[],deliveryState=['available','active','complete','failed'].includes(saved.deliveryState)?saved.deliveryState:'available',deliveryDeadline=Number.isFinite(saved.deliveryDeadline)?saved.deliveryDeadline:0,deliveryTargetIndex=Number.isFinite(saved.deliveryTargetIndex)?saved.deliveryTargetIndex:0;
 function makeActivityItem(id,label,x,z,color,kind){
  const root=new THREE.Group();root.position.set(x,0,z);scene.add(root);
@@ -408,7 +451,7 @@ const salvageItems=[
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
@@ -420,6 +463,8 @@ if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
  showToast('Vehicle repositioned to a safe road after loading.');
 }
 function currentObjective(){
+ if(cookState==='idle'||cookState==='cooking')return {name:'THE DESERT RV · COOK',pos:playerCar.position};
+ if(cookState==='ready')return {name:'THE MOTEL · MAKE THE SALE',pos:locations[5].pos};
  if(raceActive)return {name:'TIME TRIAL CHECKPOINT',pos:raceCheckpoints[raceIndex]};
  if(deliveryState==='active')return deliveryTargets[deliveryTargetIndex]||locations[1];
  if(missionStep===22){const next=evidenceItems.find(item=>!item.collected);return next?{name:next.label,pos:next.pos}:locations[2];}
@@ -437,6 +482,8 @@ function updateObjectiveBeacon(time){const target=currentObjective();objectiveBe
 function updateObjectiveDistance(){
  const target=currentObjective(),el=$('objective-distance');if(!el)return;
  if(raceActive){const seconds=Math.max(0,Math.ceil((raceDeadline-Date.now())/1000));el.textContent='STREET TIME TRIAL · '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+' · CHECKPOINT '+(raceIndex+1)+' / '+raceCheckpoints.length;return;}
+ if(cookState==='cooking'){el.textContent='RV COOK TIMER · '+Math.max(0,Math.ceil((1-cookProgress)*10))+' SEC';return;}
+ if(cookState==='ready'){el.textContent='PRODUCT SEALED · TAKE IT TO THE MOTEL BUYER';return;}
  if(deliveryState==='active'){const seconds=Math.max(0,Math.ceil((deliveryDeadline-Date.now())/1000));el.textContent='DELIVERY TIMER · '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+' · '+Math.round(player.position.distanceTo(target.pos))+' M';}
  else if(missionStep===22)el.textContent='EVIDENCE COLLECTED · '+evidenceCollected.length+' / 4 · '+(target?Math.round(player.position.distanceTo(target.pos))+' M':'');
  else if(missionStep>=25)el.textContent='CITY SALVAGE · '+salvageCollected.length+' / '+salvageItems.length+' · '+(target?Math.round(player.position.distanceTo(target.pos))+' M':'');
@@ -627,7 +674,7 @@ function showToast(text){
  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>$('toast').classList.remove('show'),2600);
 }
 function updateHUD(){
- $('cash').textContent='$' + cash.toLocaleString('en-US');
+ $('cash').textContent='
  const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','THE MISSING DRIVER','THE DINER WITNESS','A DRIVER WHO REMEMBERS','ROOM SIX','THE LEDGER','BACK TO JESSE','A NEW ARRANGEMENT','THE NIGHT DELIVERY','THE COURIER','THE WAREHOUSE LIST','THE MOTEL ROOM','THE FINAL HANDOFF','CHAPTER FIVE COMPLETE','FOUR PIECES OF PROOF','THE WAREHOUSE FILE','THE LAST DECISION','CHAPTER SIX COMPLETE'];
  const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner. Someone there may know more than they are saying.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','Jesse has heard from a driver who vanished after a late-night delivery. Start at the car wash.','Find the waitress who saw the delivery van leave the diner.','Track down the driver at the gas station. He knows where the van went.','Go to the Route 66 Motel. Someone kept a room key for the driver.','The room key leads to a ledger hidden at the desert warehouse.','Take the ledger back to Jesse at A-1 Car Wash.','Jesse has another job. A night delivery went missing on the east side.','Find the night driver at the gas station before the police do.','A courier is waiting at the diner with a route and a warning.','The warehouse contact has the shipment list. Get the truth.','Meet the motel manager. The missing cargo was moved through room six.','Return to Jesse. This time, decide what happens to the shipment.','The fifth chapter is complete. A new investigation is available.','Search the streets for four physical pieces of evidence. They are visible in the world; no conversation required.','Bring all four pieces of evidence to the warehouse archivist.','Return to Jesse and decide what to do with the evidence.','Chapter Six is complete. Albuquerque remains open for side activities.'];
  const step=Math.min(missionStep,titles.length-1);
@@ -657,6 +704,21 @@ $('mission-toggle').addEventListener('click',()=>{
 
 function interact(target){
  if(!target)return;
+ if(target.type==='rv-cook'){
+  if(cookState==='idle'){
+   openDialogue('THE RV','The old Winnebago is ready. Start a fictional, abstract cook sequence? No recipes or real-world procedures—just a short in-game production challenge.',[
+    {label:'START COOK · 10 SECONDS',run:()=>{cookState='cooking';cookProgress=0;showToast('Cook started. Stay beside the RV until the timer completes.');saveGame();updateHUD();}},
+    {label:'NOT YET',run:()=>{}}
+   ]);
+  }else if(cookState==='cooking')showToast('The cook is underway. Stay close to the RV.');
+  return;
+ }
+ if(target.type==='rv-sale'){
+  openDialogue('MOTEL BUYER','You brought it? Keep this quiet. The buyer checks the sealed package and counts out the cash.',[
+   {label:'MAKE THE SALE · +$2,500',run:()=>{cookState='sold';cash+=2500;showToast('Sale complete · +$2,500. The RV is ready for the next run.');saveGame();updateHUD();}},
+   {label:'WALK AWAY',run:()=>{}}
+  ]);return;
+ }
  if(target.type==='activity-item'){
   const item=target.item;
   if(item.kind==='race'){
@@ -744,6 +806,10 @@ function updateActive(){
  if(driving){el.classList.add('visible');$('interaction-copy').textContent=' EXIT VEHICLE';}
  else{
   for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
+  const rvDistance=player.position.distanceTo(playerCar.position);
+  if(cookState==='idle'&&rvDistance<7.2&&rvDistance>3.0){best=rvDistance;active={type:'rv-cook',label:'START COOK · RV INTERIOR',pos:playerCar.position,range:7.2};}
+  if(cookState==='cooking'&&rvDistance<7.2){best=rvDistance;active={type:'rv-cook',label:'COOKING · STAY NEAR THE RV',pos:playerCar.position,range:7.2};}
+  if(cookState==='ready'){const d=player.position.distanceTo(motelClerkNPC.root.position);if(d<5.8&&d<best){best=d;active={type:'rv-sale',label:'SELL THE FINISHED PRODUCT',pos:motelClerkNPC.root.position,range:5.8};}}
   if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
   for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
   if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
@@ -752,7 +818,491 @@ function updateActive(){
    if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
   for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}
   if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
-  else if(player.position.distanceTo(playerCar.position)<4.8){el.classList.add('visible');$('interaction-copy').textContent=' ENTER SEDAN';}
+  else if(player.position.distanceTo(playerCar.position)<3.0){el.classList.add('visible');$('interaction-copy').textContent=' ENTER RV';}
+  else el.classList.remove('visible');
+ }
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35)zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35)zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45)zone='INDUSTRIAL OUTSKIRTS';
+ if(player.position.distanceTo(locations[3].pos)<35)zone='GAS STATION';
+ if(player.position.distanceTo(locations[4].pos)<24)zone='POLICE PATROL';
+ if(player.position.distanceTo(locations[5].pos)<32)zone='ROUTE 66 MOTEL';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';updateObjectiveDistance();drawMiniMap();
+}
+function drawMiniMap(){
+ const canvas=$('minimap');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.48;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(13,19,16,.22)';ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle='rgba(213,196,153,.32)';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+ ctx.strokeStyle='rgba(213,196,153,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,h);ctx.stroke();
+ for(const l of locations){const dx=(l.pos.x-player.position.x)*scale,dy=(l.pos.z-player.position.z)*scale;if(Math.abs(dx)>cx-9||Math.abs(dy)>cy-9)continue;ctx.fillStyle=l.type==='warehouse'?'#c58c64':l.type==='gas'?'#83b7c1':'#d4b978';ctx.beginPath();ctx.arc(cx+dx,cy+dy,5,0,Math.PI*2);ctx.fill();}
+ const target=currentObjective();if(target){const tx=cx+(target.pos.x-player.position.x)*scale,ty=cy+(target.pos.z-player.position.z)*scale;if(tx>4&&tx<w-4&&ty>4&&ty<h-4){ctx.strokeStyle='#fff0b2';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(tx,ty,9,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}}
+ for(const item of [...evidenceItems,...salvageItems]){if(!item.root.visible)continue;const ix=cx+(item.pos.x-player.position.x)*scale,iy=cy+(item.pos.z-player.position.z)*scale;if(ix>4&&ix<w-4&&iy>4&&iy<h-4){ctx.fillStyle=item.kind==='salvage'?'#9ac7a4':'#e5c979';ctx.fillRect(ix-3,iy-3,6,6);}}
+ if(deliveryItem.root.visible){const ix=cx+(deliveryItem.pos.x-player.position.x)*scale,iy=cy+(deliveryItem.pos.z-player.position.z)*scale;if(ix>4&&ix<w-4&&iy>4&&iy<h-4){ctx.fillStyle='#8fc4d2';ctx.fillRect(ix-4,iy-4,8,8);}}
+ const carX=cx+(playerCar.position.x-player.position.x)*scale,carY=cy+(playerCar.position.z-player.position.z)*scale;if(carX>4&&carX<w-4&&carY>4&&carY<h-4){ctx.save();ctx.translate(carX,carY);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#8fc4d2';ctx.fillRect(-3,-6,6,12);ctx.restore();}
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
+}
+function drawWorldMap(){
+ const canvas=$('world-map');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=Math.min((w-90)/520,(h-70)/520);
+ const p=(x,z)=>({x:cx+x*scale,y:cy+z*scale});
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(32,42,34,.30)';ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle='rgba(192,177,138,.09)';ctx.lineWidth=1;
+ for(let x=-250;x<=250;x+=25){const q=p(x,0);ctx.beginPath();ctx.moveTo(q.x,35);ctx.lineTo(q.x,h-35);ctx.stroke();}
+ for(let z=-250;z<=250;z+=25){const q=p(0,z);ctx.beginPath();ctx.moveTo(35,q.y);ctx.lineTo(w-35,q.y);ctx.stroke();}
+ ctx.lineCap='square';ctx.strokeStyle='#70736b';ctx.lineWidth=19*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(-260,0)));ctx.lineTo(...Object.values(p(260,0)));ctx.stroke();
+ ctx.strokeStyle='#686c64';ctx.lineWidth=15*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(100,0)));ctx.lineTo(...Object.values(p(100,-52)));ctx.moveTo(...Object.values(p(-145,0)));ctx.lineTo(...Object.values(p(-145,-68)));ctx.stroke();
+ ctx.strokeStyle='#d0b36a';ctx.lineWidth=2;ctx.setLineDash([9,10]);ctx.beginPath();ctx.moveTo(...Object.values(p(-250,0)));ctx.lineTo(...Object.values(p(250,0)));ctx.moveTo(...Object.values(p(100,-4)));ctx.lineTo(...Object.values(p(100,-50)));ctx.moveTo(...Object.values(p(-145,-4)));ctx.lineTo(...Object.values(p(-145,-66)));ctx.stroke();ctx.setLineDash([]);
+ const block=(x,z,bw,bd,color)=>{const q=p(x,z);ctx.fillStyle=color;ctx.fillRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);ctx.strokeStyle='rgba(227,211,169,.35)';ctx.lineWidth=1;ctx.strokeRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);};
+ [[-30,-38,14,11],[-58,-38,12,10],[8,-44,12,10],[42,-42,14,11],[-70,38,11,9],[70,42,14,10]].forEach(v=>block(v[0],v[1],v[2],v[3],'#887f6e'));
+ block(36,28,30,19,'#b6a589');block(-82,22,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,24,21,14,'#b9a77d');block(-145,-76,57,14,'#b9ad91');
+ ctx.font='bold 12px monospace';ctx.textAlign='left';
+ const occupied=[];
+ for(const l of locations){
+  const q=p(l.pos.x,l.pos.z);ctx.fillStyle=l.type==='police'?'#9bb9d9':'#dfc27b';ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fill();
+  const label=String(l.name),tw=ctx.measureText(label).width,options=[[10,-10],[-tw-10,-10],[10,19],[-tw-10,19],[10,-25],[-tw-10,-25]];
+  let chosen=null;
+  for(const [ox,oy] of options){const box={x:q.x+ox-3,y:q.y+oy-11,w:tw+6,h:15};if(box.x<5||box.x+box.w>w-5||box.y<5||box.y+box.h>h-28)continue;if(!occupied.some(b=>box.x<b.x+b.w+4&&box.x+box.w+4>b.x&&box.y<b.y+b.h+3&&box.y+box.h+3>b.y)){chosen={box,ox,oy};break;}}
+  if(chosen){occupied.push(chosen.box);ctx.fillStyle='rgba(18,24,20,.82)';ctx.fillRect(chosen.box.x,chosen.box.y,chosen.box.w,chosen.box.h);ctx.fillStyle='#e0d1aa';ctx.fillText(label,q.x+chosen.ox,q.y+chosen.oy);}
+ }
+ for(const item of [...evidenceItems,...salvageItems]){if(item.root.visible){const q=p(item.pos.x,item.pos.z);ctx.fillStyle=item.kind==='salvage'?'#9ac7a4':'#e5c979';ctx.fillRect(q.x-5,q.y-5,10,10);}}
+ if(deliveryItem.root.visible){const q=p(deliveryItem.pos.x,deliveryItem.pos.z);ctx.fillStyle='#8fc4d2';ctx.fillRect(q.x-6,q.y-6,12,12);}
+ const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
+ const car=p(playerCar.position.x,playerCar.position.z);ctx.save();ctx.translate(car.x,car.y);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#83bfd1';ctx.fillRect(-7,-13,14,26);ctx.restore();
+ const me=p(player.position.x,player.position.z);ctx.save();ctx.translate(me.x,me.y);ctx.rotate(-player.rotation.y);ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.restore();
+ const objectiveText=target?target.name+' · '+Math.round(player.position.distanceTo(target.pos))+' M':'FREE ROAM';
+ ctx.fillStyle='#d8c58f';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(objectiveText,w/2,h-12);
+}
+function setMapOpen(open){mapOpen=!!open;$('map-overlay').classList.toggle('hidden',!mapOpen);if(mapOpen)drawWorldMap();}
+$('minimap').addEventListener('click',()=>setMapOpen(true));
+let mapPointerStart=null;
+const worldMapCanvas=$('world-map');
+worldMapCanvas.addEventListener('pointerdown',e=>{mapPointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};try{worldMapCanvas.setPointerCapture(e.pointerId);}catch{}});
+worldMapCanvas.addEventListener('pointerup',e=>{
+ if(!mapPointerStart||mapPointerStart.id!==e.pointerId)return;
+ const moved=Math.hypot(e.clientX-mapPointerStart.x,e.clientY-mapPointerStart.y);mapPointerStart=null;
+ if(moved>18)return;
+ e.preventDefault();
+ const rect=worldMapCanvas.getBoundingClientRect(),px=(e.clientX-rect.left)*worldMapCanvas.width/rect.width,py=(e.clientY-rect.top)*worldMapCanvas.height/rect.height;
+ const scale=Math.min((worldMapCanvas.width-90)/520,(worldMapCanvas.height-70)/520),x=(px-worldMapCanvas.width/2)/scale,z=(py-worldMapCanvas.height/2)/scale;
+ if(x< -245||x>245||z< -245||z>245){showToast('Choose a point inside the city map.');return;}
+ setClickDestination(x,z);drawWorldMap();if(clickMovePath.length)setMapOpen(false);showToast(clickMovePath.length?'Destination set · walking there now.':'Choose another destination.');
+});
+worldMapCanvas.addEventListener('pointercancel',()=>{mapPointerStart=null;});
+const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;clickMovePath=[];saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
+$('map-close').onclick=()=>setMapOpen(false);
+function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('RV entered · W accelerate · A/D steer · S reverse · H horn');updateActive();}
+function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
+function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item'||active.type==='rv-cook'||active.type==='rv-sale')){interact(active);return;}if(player.position.distanceTo(playerCar.position)<3.0){enterVehicle();return;}if(active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ unlockGameAudio();
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
+ if(e.code==='KeyM'){setMapOpen(!mapOpen);return;}
+  if(e.code==='KeyH'&&driving){playHorn();return;}
+ if(e.code==='KeyC'&&!driving&&player.position.distanceTo(playerCar.position)<7.2){interact({type:'rv-cook'});return;}
+ if(e.code==='Escape'){if(mapOpen)setMapOpen(false);else closeDialogue();return;}
+ if(mapOpen)return;
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+window.addEventListener('blur',()=>{Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;resetJoystick();});
+window.addEventListener('pagehide',saveGame);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){saveGame();Object.keys(keys).forEach(k=>keys[k]=false);dragging=false;resetJoystick();}});
+let scenePointerStart=null;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;scenePointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};try{renderer.domElement.setPointerCapture(e.pointerId);}catch{}});
+renderer.domElement.addEventListener('pointerup',e=>{
+ dragging=false;
+ if(!scenePointerStart||scenePointerStart.id!==e.pointerId)return;
+ const distance=Math.hypot(e.clientX-scenePointerStart.x,e.clientY-scenePointerStart.y);
+ scenePointerStart=null;
+ if(distance>9||dialogOpen||mapOpen||driving)return;
+ const rect=renderer.domElement.getBoundingClientRect();
+ const ndc=new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
+ const raycaster=new THREE.Raycaster();raycaster.setFromCamera(ndc,camera);
+ const ground=new THREE.Plane(new THREE.Vector3(0,1,0),0),point=new THREE.Vector3();
+ if(raycaster.ray.intersectPlane(ground,point)&&Math.abs(point.x)<245&&Math.abs(point.z)<235){
+  setClickDestination(point.x,point.z);showToast('Destination set · walking there now.');
+ }
+});
+renderer.domElement.addEventListener('pointercancel',()=>{dragging=false;scenePointerStart=null;});
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;try{el.setPointerCapture(e.pointerId);}catch{}});
+ ['pointerup','pointerleave','pointercancel','lostpointercapture'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+let joystickX=0,joystickY=0,joystickPointer=null;
+const joystick=$('mobile-joystick'),joystickKnob=$('joystick-knob');
+function resetJoystick(){
+ joystickX=0;joystickY=0;joystickPointer=null;
+ joystickKnob.style.transform='translate(-50%,-50%)';
+}
+function moveJoystick(e){
+ const rect=joystick.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+ const max=Math.min(rect.width,rect.height)*.25,dx=e.clientX-cx,dy=e.clientY-cy,len=Math.hypot(dx,dy),scale=len>max?max/len:1;
+ const x=dx*scale,y=dy*scale;
+ joystickX=THREE.MathUtils.clamp(x/max,-1,1);joystickY=THREE.MathUtils.clamp(y/max,-1,1);
+ joystickKnob.style.transform='translate(calc(-50% + '+x+'px),calc(-50% + '+y+'px))';
+}
+joystick.addEventListener('pointerdown',e=>{
+ e.preventDefault();joystickPointer=e.pointerId;
+ try{joystick.setPointerCapture(e.pointerId);}catch{}
+ moveJoystick(e);
+});
+joystick.addEventListener('pointermove',e=>{if(e.pointerId===joystickPointer){e.preventDefault();moveJoystick(e);}});
+['pointerup','pointercancel','lostpointercapture'].forEach(type=>joystick.addEventListener(type,e=>{if(e.pointerId===joystickPointer)resetJoystick();}));
+$('mobile-interact').addEventListener('pointerdown',unlockGameAudio,{passive:true});
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ const viewport=window.visualViewport;
+ const width=Math.max(1,Math.round(viewport?.width||window.innerWidth||document.documentElement.clientWidth));
+ const height=Math.max(1,Math.round(viewport?.height||window.innerHeight||document.documentElement.clientHeight));
+ camera.aspect=width/height;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.65));
+ renderer.setSize(width,height,false);
+ app.style.setProperty('--viewport-width',width+'px');
+ app.style.setProperty('--viewport-height',height+'px');
+ renderer.domElement.style.width='100%';
+ renderer.domElement.style.height='100%';
+}
+window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',()=>setTimeout(resize,120));
+window.visualViewport?.addEventListener('resize',resize);
+window.visualViewport?.addEventListener('scroll',resize);
+window.addEventListener('pageshow',resize);
+resize();
+const clock=new THREE.Clock();
+let lastAutoSave=0,uiRefreshClock=0;
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ let walkingNow=false;
+ uiRefreshClock+=dt;
+ if(!dialogOpen&&!mapOpen){
+  crashCooldown=Math.max(0,crashCooldown-dt);
+  if(cookState==='cooking'&&!driving&&player.position.distanceTo(playerCar.position)<7.2){
+   cookProgress=Math.min(1,cookProgress+dt/10);
+   const bar=document.querySelector('.objective-progress i');if(bar)bar.style.width=Math.round(cookProgress*70)+'%';
+   if(cookProgress>=1){cookState='ready';showToast('Cook complete · sealed package ready. Take it to the Route 66 Motel.');saveGame();updateHUD();}
+  }
+  trafficCars.forEach(t=>{
+   const start=t.root.position.clone();
+   let nextX=start.x+t.direction*t.speed*dt;
+   let wrapped=false;
+   if(nextX>265){nextX=-265;wrapped=true;}
+   if(nextX< -265){nextX=265;wrapped=true;}
+   const heading=t.direction>0?Math.PI/2:-Math.PI/2;
+   const end=new THREE.Vector3(nextX,start.y,start.z);
+   let blocked='';
+   if(wrapped){
+    blocked=vehicleCollisionAt(end,heading,t.root);
+    if(!blocked)t.root.position.copy(end);
+   }else{
+    const travel=Math.abs(nextX-start.x),steps=Math.max(1,Math.ceil(travel/.12));
+    let lastSafe=start.clone();
+    for(let step=1;step<=steps;step++){
+     const candidate=start.clone().lerp(end,step/steps);
+     blocked=vehiclePathHitsPedestrian(lastSafe,candidate,heading)?'pedestrian':vehicleCollisionAt(candidate,heading,t.root);
+     if(blocked)break;
+     t.root.position.copy(candidate);
+     lastSafe.copy(candidate);
+    }
+   }
+   if(blocked){
+    t.root.position.copy(start);
+    if(blocked!=='pedestrian')t.direction*=-1;
+   }
+   t.root.rotation.y=t.direction>0?Math.PI/2:-Math.PI/2;
+  });
+  separatePedestriansFromAllVehicles();
+  if(driving){
+   const throttle=THREE.MathUtils.clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY,-1,1);
+   const steering=THREE.MathUtils.clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX,-1,1);
+   const effectiveThrottle=(fuel<=0&&throttle>0)?0:throttle;
+   driveSpeed=THREE.MathUtils.clamp(driveSpeed+effectiveThrottle*15*dt,-10,24);
+   if(fuel<=0&&driveSpeed>0)driveSpeed=Math.max(0,driveSpeed-18*dt);
+   fuel=THREE.MathUtils.clamp(fuel-Math.abs(driveSpeed)*dt*.018,0,100);
+   if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
+   if(Math.abs(driveSpeed)<.08)driveSpeed=0;
+   const oldRotation=playerCar.rotation.y;
+   const steeredRotation=oldRotation-steering*1.45*dt*(driveSpeed>=0?1:-1);
+   if(!vehicleCollisionAt(playerCar.position,steeredRotation,playerCar))playerCar.rotation.y=steeredRotation;
+   const oldPosition=playerCar.position.clone();
+   const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
+   const next=oldPosition.clone().addScaledVector(heading,driveSpeed*dt);
+   const travel=oldPosition.distanceTo(next),steps=Math.max(1,Math.ceil(travel/.12));
+   let collision='';
+   for(let step=1;step<=steps;step++){
+    const candidate=oldPosition.clone().lerp(next,step/steps);
+    collision=vehiclePathHitsPedestrian(playerCar.position,candidate,playerCar.rotation.y)?'pedestrian':vehicleCollisionAt(candidate,playerCar.rotation.y,playerCar);
+    if(collision)break;
+    playerCar.position.copy(candidate);
+   }
+   if(collision){
+    driveSpeed=0; // A blocked vehicle stops instead of bouncing through the obstacle.
+    if(crashCooldown<=0){playImpact();const pedestrian=collision==='pedestrian';showToast(pedestrian?'The car stopped before reaching the pedestrian.':'Vehicle collision: '+collision+'.');crashCooldown=1.0;}
+   }
+   playerCar.position.x=THREE.MathUtils.clamp(playerCar.position.x,-245,245);playerCar.position.z=THREE.MathUtils.clamp(playerCar.position.z,-235,235);
+   player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
+   $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H · FUEL '+Math.round(fuel)+'%';
+  }else{
+   $('drive-info').textContent='ON FOOT';
+   const manualForward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY;
+   const manualSide=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX;
+   if(manualForward!==0||manualSide!==0)clickMovePath=[];
+   while(clickMovePath.length&&player.position.distanceTo(clickMovePath[0])<1.9)clickMovePath.shift();
+   const autoTarget=clickMovePath[0]||null;
+   if(autoTarget){yaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z);player.rotation.y=yaw;}
+   const forward=autoTarget?1:manualForward;
+   const side=autoTarget?0:manualSide;
+   const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+   const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+   const right=new THREE.Vector3(-direction.z,0,direction.x);
+   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();const next=player.position.clone().addScaledVector(move,speed);
+   const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
+   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<4.5);
+   const oldX=player.position.x,oldZ=player.position.z;
+   if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
+   if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
+   if(player.position.x!==oldX||player.position.z!==oldZ){if(!autoTarget)player.rotation.y=Math.atan2(move.x,move.z);walkingNow=true;}
+   else if(autoTarget){clickMovePath=[];showToast('Route blocked · choose another destination.');}
+   if(autoTarget&&clickMovePath.length===0){customWaypoint=null;saveGame();drawMiniMap();}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+  }
+ }
+ if(uiRefreshClock>=.12){updateActive();uiRefreshClock=0;}
+ if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.42){playFootstep();footstepClock=0;}}else footstepClock=0;
+ if(soundEnabled&&audioContext&&engineOsc){const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);engineOsc.frequency.setTargetAtTime(48+Math.abs(driveSpeed)*3.2,audioContext.currentTime,.12);engineGain.gain.setTargetAtTime(driving?.045+speedRatio*.055:0,audioContext.currentTime,.18);engineHarmonicGain.gain.setTargetAtTime(driving?.012+speedRatio*.025:0,audioContext.currentTime,.18);roadNoiseGain.gain.setTargetAtTime(driving?speedRatio*.055:0,audioContext.currentTime,.2);}
+ if(soundEnabled&&audioContext&&audioContext.state==='running'&&audioContext.currentTime>=nextBirdAt){playBirdCall();nextBirdAt=audioContext.currentTime+9+Math.random()*12;}
+ if(deliveryState==='active'&&Date.now()>=deliveryDeadline){deliveryState='failed';deliveryDeadline=0;deliveryItem.root.visible=true;showToast('Delivery window expired. The package is back at the car wash.');saveGame();updateHUD();}
+ if(raceActive){
+  if(Date.now()>=raceDeadline){raceActive=false;raceGates.forEach(g=>g.root.visible=false);raceStartItem.root.visible=true;showToast('Time trial expired. Return to the start marker to try again.');}
+  else if(driving&&playerCar.position.distanceTo(raceCheckpoints[raceIndex])<7.5){
+   raceIndex++;
+   if(raceIndex>=raceCheckpoints.length){raceActive=false;raceGates.forEach(g=>g.root.visible=false);raceStartItem.root.visible=true;cash+=1800;showToast('Street time trial complete · +$1,800');updateHUD();saveGame();}
+   else showToast('Checkpoint '+raceIndex+' / '+raceCheckpoints.length+' cleared. Keep moving!');
+  }
+ }
+ const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.008)*.34:0;
+ for(const item of [...evidenceItems,...salvageItems,deliveryItem,raceStartItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
+ raceGates.forEach((gate,i)=>{if(gate.root.visible)gate.ring.rotation.z+=dt*(i%2?-.65:.65);});
+  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
+ const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
+ animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);animateNpc(witnessNPC);animateNpc(courierNPC);animateNpc(driverNPC);animateNpc(motelClerkNPC);animateNpc(warehouseArchivistNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
+ ambientNPCs.forEach((npc,i)=>{
+   animateNpc(npc);
+   let nearestDistance=Infinity,awayX=0,awayZ=0;
+   for(const movingCar of movingVehicleRoots){const dx=npc.root.position.x-movingCar.position.x,dz=npc.root.position.z-movingCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
+   if(driving){const dx=npc.root.position.x-playerCar.position.x,dz=npc.root.position.z-playerCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
+   if(nearestDistance<8.5){
+     const length=Math.hypot(awayX,awayZ)||1;awayX/=length;awayZ/=length;
+     const moved=movePedestrianSafely(npc,npc.root.position.x+awayX*3.8*dt,npc.root.position.z+awayZ*3.8*dt);
+     if(moved){npc.home.x+=awayX*3.8*dt;npc.home.z+=awayZ*3.8*dt;}
+     npc.root.rotation.y=Math.atan2(awayX,awayZ);
+     const run=Math.sin(animTime*.025)*.48;npc.legs[0].rotation.x=moved?run:0;npc.legs[1].rotation.x=moved?-run:0;
+     return;
+    }
+   const distance=npc.root.position.distanceTo(player.position);
+   if(distance<7){npc.root.rotation.y=Math.atan2(player.position.x-npc.root.position.x,player.position.z-npc.root.position.z);npc.legs.forEach(leg=>leg.rotation.x=0);return;}
+   const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;
+   const wanderX=npc.home.x+Math.sin(t)*2.1,wanderZ=npc.home.z+Math.cos(t)*1.15;
+    movePedestrianSafely(npc,wanderX,wanderZ);
+   if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){
+    npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);
+    const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;
+   }
+  });
+ updateObjectiveBeacon(animTime);
+ if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
+ const cameraYaw=driving?playerCar.rotation.y:yaw;
+ const camDist=driving?13.5:8.8;
+ const cameraPitch=driving?pitch*.35:pitch;
+ cameraTarget.set(player.position.x,player.position.y+(driving?2.85:1.82),player.position.z);
+ const horizontalDistance=camDist*Math.cos(cameraPitch);
+ const offset=new THREE.Vector3(-Math.sin(cameraYaw)*horizontalDistance,Math.sin(cameraPitch)*camDist,-Math.cos(cameraYaw)*horizontalDistance);
+ const desired=keepCameraOutsideWalls(cameraTarget,cameraTarget.clone().add(offset));
+ camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(cameraTarget);
+ landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
+ renderer.render(scene,camera);
+}
+// Keep the live game independent of stale service-worker shells. Clear legacy app caches once on startup.
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+ window.addEventListener('load',async()=>{
+  try{
+   const registrations=await navigator.serviceWorker.getRegistrations();
+   await Promise.all(registrations.map(registration=>registration.unregister()));
+   if('caches' in window){
+    const keys=await caches.keys();
+    await Promise.all(keys.filter(key=>key.startsWith('abq-stories-')).map(key=>caches.delete(key)));
+   }
+  }catch(error){console.warn('App cache cleanup skipped',error);}
+ });
+}
+updateHUD();saveGame();drawMiniMap();animate();
+gameReady=true;clearTimeout(startupWatchdog);
+setTimeout(()=>$('loading').classList.add('gone'),700);
+ + cash.toLocaleString('en-US');
+ if(cookState==='idle'||cookState==='cooking'||cookState==='ready'){
+  $('mission-title').textContent=cookState==='ready'?'TAKE THE RV TO THE MOTEL BUYER':'THE DESERT RV · FIRST COOK';
+  $('mission-copy').textContent=cookState==='ready'?'The batch is sealed. Drive the Winnebago to the Route 66 Motel and meet the buyer.':cookState==='cooking'?'Stay beside the RV while the abstract cook timer runs. No real-world procedure is shown.':'Find the classic Winnebago, park nearby and start the cook sequence.';
+  const p=document.querySelector('.objective-progress i');if(p)p.style.width=cookState==='ready'?'75%':cookState==='cooking'?Math.round(cookProgress*70)+'%':'25%';
+  const ch=$('chapter');if(ch)ch.textContent='SIDE STORY · THE RV RUN';
+  return;
+ }
+ const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','THE MISSING DRIVER','THE DINER WITNESS','A DRIVER WHO REMEMBERS','ROOM SIX','THE LEDGER','BACK TO JESSE','A NEW ARRANGEMENT','THE NIGHT DELIVERY','THE COURIER','THE WAREHOUSE LIST','THE MOTEL ROOM','THE FINAL HANDOFF','CHAPTER FIVE COMPLETE','FOUR PIECES OF PROOF','THE WAREHOUSE FILE','THE LAST DECISION','CHAPTER SIX COMPLETE'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner. Someone there may know more than they are saying.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','Jesse has heard from a driver who vanished after a late-night delivery. Start at the car wash.','Find the waitress who saw the delivery van leave the diner.','Track down the driver at the gas station. He knows where the van went.','Go to the Route 66 Motel. Someone kept a room key for the driver.','The room key leads to a ledger hidden at the desert warehouse.','Take the ledger back to Jesse at A-1 Car Wash.','Jesse has another job. A night delivery went missing on the east side.','Find the night driver at the gas station before the police do.','A courier is waiting at the diner with a route and a warning.','The warehouse contact has the shipment list. Get the truth.','Meet the motel manager. The missing cargo was moved through room six.','Return to Jesse. This time, decide what happens to the shipment.','The fifth chapter is complete. A new investigation is available.','Search the streets for four physical pieces of evidence. They are visible in the world; no conversation required.','Bring all four pieces of evidence to the warehouse archivist.','Return to Jesse and decide what to do with the evidence.','Chapter Six is complete. Albuquerque remains open for side activities.'];
+ const step=Math.min(missionStep,titles.length-1);
+ $('mission-title').textContent=titles[step];$('mission-copy').textContent=copies[step];
+ const progress=document.querySelector('.objective-progress i');
+ if(progress)progress.style.width=['5%','10%','15%','20%','25%','30%','35%','40%','45%','50%','55%','60%','65%','70%','75%','80%','84%','88%','92%','96%','99%','100%','82%','92%','97%','100%'][step]||'100%';
+ const chapter=$('chapter');if(chapter)chapter.textContent=missionStep<=8?'CHAPTER 01 · THE FIRST MOVE':missionStep<=14?'CHAPTER 04 · THE MISSING DRIVER':missionStep<=20?'CHAPTER 05 · THE NIGHT DELIVERY':missionStep<=24?'CHAPTER 06 · THE EVIDENCE TRAIL':'CHAPTER 06 · COMPLETE';
+ if(deliveryState==='active'){$('mission-title').textContent='TIME-SENSITIVE DELIVERY';$('mission-copy').textContent='A package is in your care. Reach the marked drop point before the timer expires.';}
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');}
+$('close-dialogue').onclick=closeDialogue;
+$('mission-toggle').addEventListener('click',()=>{
+ const panel=$('mission');
+ const expanded=panel.classList.toggle('expanded');
+ panel.classList.toggle('collapsed',!expanded);
+ $('mission-toggle').setAttribute('aria-expanded',String(expanded));
+});
+
+function interact(target){
+ if(!target)return;
+ if(target.type==='rv-cook'){
+  if(cookState==='idle'){
+   openDialogue('THE RV','The old Winnebago is ready. Start a fictional, abstract cook sequence? No recipes or real-world procedures—just a short in-game production challenge.',[
+    {label:'START COOK · 10 SECONDS',run:()=>{cookState='cooking';cookProgress=0;showToast('Cook started. Stay beside the RV until the timer completes.');saveGame();updateHUD();}},
+    {label:'NOT YET',run:()=>{}}
+   ]);
+  }else if(cookState==='cooking')showToast('The cook is underway. Stay close to the RV.');
+  return;
+ }
+ if(target.type==='rv-sale'){
+  openDialogue('MOTEL BUYER','You brought it? Keep this quiet. The buyer checks the sealed package and counts out the cash.',[
+   {label:'MAKE THE SALE · +$2,500',run:()=>{cookState='sold';cash+=2500;showToast('Sale complete · +$2,500. The RV is ready for the next run.');saveGame();updateHUD();}},
+   {label:'WALK AWAY',run:()=>{}}
+  ]);return;
+ }
+ if(target.type==='activity-item'){
+  const item=target.item;
+  if(item.kind==='race'){
+   if(raceActive){showToast('A time trial is already active.');return;}
+   raceActive=true;raceIndex=0;raceDeadline=Date.now()+115000;item.root.visible=false;
+   raceGates.forEach(g=>g.root.visible=true);showToast('Street time trial started. Get in your car and hit every gate!');updateHUD();saveGame();return;
+  }
+  if(item.kind==='delivery'){
+   deliveryState='active';deliveryDeadline=Date.now()+105000;deliveryTargetIndex=(missionStep+1)%deliveryTargets.length;item.root.visible=false;
+   showToast('Package collected. Deliver it within 1 minute 45 seconds.');updateHUD();saveGame();return;
+  }
+  if(item.kind==='evidence'&&missionStep===22&&!item.collected){
+   item.collected=true;item.root.visible=false;evidenceCollected.push(item.id);cash+=100;
+   showToast('Evidence recovered · '+evidenceCollected.length+'/4 · +$100');
+   if(evidenceCollected.length===evidenceItems.length){missionStep=23;showToast('All four pieces secured. Take them to the warehouse.');}
+   updateHUD();saveGame();return;
+  }
+  if(item.kind==='salvage'&&!item.collected){
+   item.collected=true;item.root.visible=false;salvageCollected.push(item.id);cash+=275;
+   showToast(item.label+' recovered · +$275');
+   if(salvageCollected.length===salvageItems.length)showToast('Neighborhood salvage route complete · +$1,375 earned');
+   updateHUD();saveGame();return;
+  }
+ }else if(target.type==='gas-refuel'){
+  if(fuel>=100){showToast('The tank is already full.');return;}
+  if(cash<300){showToast('Refueling costs $300. You do not have enough cash.');return;}
+  cash-=300;fuel=100;showToast('Vehicle refueled · -$300');updateHUD();saveGame();return;
+ }else if(target.type==='delivery-drop'){
+  if(deliveryState==='active'){deliveryState='complete';deliveryDeadline=0;cash+=1250;showToast('Delivery completed on time. +$1,250');updateHUD();saveGame();}
+  return;
+ }else if(target.type==='local'){
+  const lines=[['NEIGHBOR','That black-and-white cruiser keeps turning around near the avenue. Someone has been asking about a late-night delivery.'],['CAR WASH CUSTOMER','I saw a delivery van heading toward the warehouse road before sunrise. It looked like it was in a hurry.'],['DESERT COMMUTER','The stranger at the gas station was asking about a room at the Route 66 Motel.']];
+  const [speaker,line]=lines[target.index]||lines[0];
+  if(localsTalked.includes(target.index))openDialogue(speaker,'I have told you everything I know. I need to get going.',[{label:'Let them go',run:()=>{}}]);
+  else openDialogue(speaker,line,[{label:'Thank them for the information',run:()=>{localsTalked.push(target.index);showToast('You have a new lead.');saveGame();}},{label:'Leave them alone',run:()=>{}}]);
+ }else if(target.type==='mission'){
+  if(missionStep===0)openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[{label:'“I have a plan. Hear me out.”',run:()=>{cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},{label:'“Forget it. Not today.”',run:()=>showToast('Jesse leaves. The moment passes.')}]);
+  else if(missionStep===8)openDialogue('JESSE','You came back. Tell me exactly what was in the envelope. And do not leave anything out.',[{label:'Show him the evidence (+$1,300)',run:()=>{cash+=1300;missionStep=9;showToast('Jesse understands. +$1,300. A new problem is waiting.');saveGame();updateHUD();}},{label:'Keep the details to yourself (+$500)',run:()=>{cash+=500;missionStep=9;showToast('You keep the details quiet. +$500.');saveGame();updateHUD();}}]);
+  else if(missionStep===9)openDialogue('JESSE','A driver disappeared after a late delivery. His van was seen near the diner, then the motel. Find out what happened before somebody else does.',[{label:'“I will find the driver.”',run:()=>{missionStep=10;showToast('Chapter Four: The Missing Driver.');saveGame();updateHUD();}},{label:'Ask for an advance (+$150)',run:()=>{cash+=150;missionStep=10;showToast('Jesse gives you $150 for expenses.');saveGame();updateHUD();}}]);
+  else if(missionStep===14)openDialogue('JESSE','That ledger could ruin a lot of people. We need to decide what it is worth.',[{label:'Split the proceeds (+$2,200)',run:()=>{cash+=2200;missionStep=15;showToast('Chapter Four complete. +$2,200');saveGame();updateHUD();}},{label:'Take the larger share (+$3,200)',run:()=>{cash+=3200;missionStep=15;showToast('You take the larger share. +$3,200');saveGame();updateHUD();}}]);
+  else if(missionStep===15)openDialogue('JESSE','One more job. A night shipment went missing on the east side. The driver, the courier and the warehouse list are all connected. Bring me the truth.',[{label:'Start the night delivery investigation',run:()=>{missionStep=16;showToast('Chapter Five: The Night Delivery.');saveGame();updateHUD();}},{label:'Ask for an advance (+$200)',run:()=>{cash+=200;missionStep=16;showToast('Jesse gives you a $200 advance.');saveGame();updateHUD();}}]);
+  else if(missionStep===20)openDialogue('JESSE','That is the last of it. We can close this quietly, or make one final move and walk away with more.',[{label:'Close the deal (+$3,000)',run:()=>{cash+=3000;missionStep=21;showToast('Chapter Five complete. +$3,000');saveGame();updateHUD();}},{label:'Make the final move (+$4,500)',run:()=>{cash+=4500;missionStep=21;showToast('You take the risk and get paid. +$4,500');saveGame();updateHUD();}}]);
+  else if(missionStep===21)openDialogue('JESSE','The shipment list is only half the story. Four physical pieces of evidence were scattered around town. Find them. No more asking people questions — bring me something we can hold.',[{label:'Start the evidence trail',run:()=>{missionStep=22;evidenceCollected=[];evidenceItems.forEach(item=>{item.collected=false;item.root.visible=true;});showToast('Chapter Six: The Evidence Trail. Search the city.');saveGame();updateHUD();}},{label:'Not now',run:()=>{}}]);
+  else if(missionStep===24)openDialogue('JESSE','You found all four pieces. We can hand the evidence over and disappear, or keep it and use it as leverage. Either way, this changes things.',[{label:'Hand it over and walk away (+$2,500)',run:()=>{cash+=2500;missionStep=25;showToast('You chose a clean exit. +$2,500. Chapter Six complete.');saveGame();updateHUD();}},{label:'Keep the evidence and take the risk (+$4,000)',run:()=>{cash+=4000;missionStep=25;showToast('You kept the leverage. +$4,000. Chapter Six complete.');saveGame();updateHUD();}}]);
+  else if(missionStep>=25)openDialogue('JESSE','We have done enough for one lifetime. There is a cash-paying salvage route around town. Five lost items are marked on your map. Search them, bring the finds back, and keep the money. The courier package also respawns for repeat deliveries.',[{label:'Start the neighborhood salvage route',run:()=>{salvageItems.forEach(item=>{if(!item.collected)item.root.visible=true;});showToast('Five salvage locations added to your map. Each find pays $275.');saveGame();updateHUD();}},{label:'Leave',run:()=>{}}]);
+  else if(!carWashShiftDone)openDialogue('CAR WASH MANAGER','The afternoon rush is over, but there is still work to do. A short shift would put some cash in your pocket.',[{label:'Work the short shift (+$300)',run:()=>{cash+=300;carWashShiftDone=true;showToast('Shift complete. +$300.');saveGame();updateHUD();}},{label:'Ask Jesse how things are going',run:()=>showToast('Jesse says to keep your head down.')}]);
+  else openDialogue('CAR WASH MANAGER','The wash is running smoothly. There is nothing else to do here right now.',[{label:'Leave',run:()=>{}}]);
+ }else if(target.type==='talk'){
+  if(missionStep===10)openDialogue('MARA · DINER WAITRESS','I saw the van leave after midnight. The driver dropped a receipt. He said room six at the Route 66 Motel was paid in cash.',[{label:'Pay $100 for the receipt',run:()=>{if(cash<100){showToast('You do not have enough cash.');return;}cash-=100;missionStep=11;showToast('Receipt purchased. -$100');saveGame();updateHUD();}},{label:'Take the lead and owe her a favor',run:()=>{missionStep=11;showToast('You have a lead on the driver.');saveGame();updateHUD();}}]);
+  else if(missionStep===17)openDialogue('THE COURIER','The shipment was rerouted. The warehouse list has the new destination, but I will not hand it over for free.',[{label:'Pay $300 for the route',run:()=>{if(cash<300){showToast('You do not have enough cash.');return;}cash-=300;missionStep=18;showToast('Route purchased. -$300');saveGame();updateHUD();}},{label:'Take the route without paying',run:()=>{missionStep=18;showToast('The courier gives you a partial route.');saveGame();updateHUD();}}]);
+  else{
+   const choices=[];
+   if(missionStep===1)choices.push({label:'Ask about the warehouse',run:()=>{missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
+   else if(missionStep===3)choices.push({label:'Hand over the sealed envelope (+$900)',run:()=>{missionStep=4;cash+=900;showToast('Delivery complete. +$900. A contact is waiting at the gas station.');saveGame();updateHUD();}});
+   else if(missionStep===6)choices.push({label:'Listen to the voicemail',run:()=>{missionStep=7;showToast('A message points to the Route 66 Motel.');saveGame();updateHUD();}});
+   if(!choices.length)choices.push({label:'Ask what people have heard around town',run:()=>showToast('Nobody has anything new to add.')});
+   choices.push({label:'Leave the diner',run:()=>{}});
+   openDialogue('DINER REGULAR','The neighborhood is tense. A few people have noticed the same van making late-night stops.',choices);
+  }
+ }else if(target.type==='gas'){
+  if(missionStep===4)openDialogue('THE STRANGER','You came. Keep your voice down. I have a name, a place, and a reason this needs to stay quiet.',[{label:'Hear the proposal',run:()=>{missionStep=5;showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}},{label:'Walk away',run:()=>{missionStep=5;showToast('You decide to hear the rest later.');saveGame();updateHUD();}}]);
+  else if(missionStep===11)openDialogue('THE DRIVER','I drove the van. I did not know what was inside. The motel clerk has the key, but I need to know you are serious.',[{label:'Pay him $250 for the details',run:()=>{if(cash<250){showToast('You do not have enough cash.');return;}cash-=250;missionStep=12;showToast('The driver gives you the room number. -$250');saveGame();updateHUD();}},{label:'Take the room number and leave',run:()=>{missionStep=12;showToast('The driver tells you where to look.');saveGame();updateHUD();}}]);
+  else if(missionStep===16)openDialogue('NIGHT DRIVER','I was told to leave the package at the diner, but the courier changed the route. Someone at the diner knows where he went.',[{label:'Ask for the courier description',run:()=>{missionStep=17;showToast('The driver describes the courier. Head to the diner.');saveGame();updateHUD();}},{label:'Pay $200 for the driver’s notes',run:()=>{if(cash<200){showToast('You do not have enough cash.');return;}cash-=200;missionStep=17;showToast('Notes purchased. -$200');saveGame();updateHUD();}}]);
+  else openDialogue('GAS STATION ATTENDANT','A quiet stop beside the highway. The attendant has seen plenty of strange cars, but remembers very little.',[{label:'Leave',run:()=>{}}]);
+ }else if(target.type==='motel'){
+  if(missionStep===7)openDialogue('MOTEL CONTACT','You are late. The courier left an envelope under the ice machine. There are two names inside. One of them is going to make trouble.',[{label:'Open the envelope (+$700)',run:()=>{cash+=700;missionStep=8;showToast('You found the names. Take the evidence back to Jesse. +$700');saveGame();updateHUD();}},{label:'Leave it sealed (+$200)',run:()=>{cash+=200;missionStep=8;showToast('You leave the envelope sealed. Return to the car wash. +$200');saveGame();updateHUD();}}]);
+  else if(missionStep===12)openDialogue('MOTEL CLERK','Room six was paid for in cash. The driver left a key with me and said someone would come asking.',[{label:'Pay $150 for the key',run:()=>{if(cash<150){showToast('You do not have enough cash.');return;}cash-=150;missionStep=13;showToast('Room six key acquired. -$150');saveGame();updateHUD();}},{label:'Convince the clerk to hand it over',run:()=>{missionStep=13;showToast('The clerk slides the key across the counter.');saveGame();updateHUD();}}]);
+  else if(missionStep===19)openDialogue('MOTEL MANAGER','Room six was cleared before dawn. The cargo was moved through the back lot. The person who signed for it is waiting at the car wash.',[{label:'Get the name and leave',run:()=>{missionStep=20;showToast('You have the name. Return to Jesse.');saveGame();updateHUD();}}]);
+  else openDialogue('MOTEL MANAGER','The motel is quiet. Keep the noise down and stay out of the parking spaces.',[{label:'Leave',run:()=>{}}]);
+ }else if(target.type==='police'){
+  openDialogue('OFFICER','We have had reports of a van moving through this district after midnight. If you see it again, stay clear and call it in.',[{label:'Ask for the time of the report',run:()=>showToast('The report was logged just after midnight.')},{label:'Walk away',run:()=>{}}]);
+ }else if(target.type==='warehouse'){
+  if(missionStep<2)openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
+  else if(missionStep===2)openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[{label:'Talk it through (+$1,800)',run:()=>{cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800. A delivery is waiting.');saveGame();updateHUD();}},{label:'Push for the details (+$2,400)',run:()=>{cash+=2400;missionStep=3;showToast('You get the information you came for. +$2,400.');saveGame();updateHUD();}}]);
+  else if(missionStep===5)openDialogue('WAREHOUSE CONTACT','The stranger has a proposal. It is a chance to make money, but every deal leaves a trace.',[{label:'Accept the quiet deal (+$1,600)',run:()=>{cash+=1600;missionStep=6;showToast('Deal made. +$1,600.');saveGame();updateHUD();}},{label:'Walk away',run:()=>{missionStep=6;showToast('You leave without making a deal.');saveGame();updateHUD();}}]);
+  else if(missionStep===13)openDialogue('WAREHOUSE ARCHIVIST','The ledger is here. It lists the motel payments, the van, and a shipment that never reached its destination.',[{label:'Take the ledger',run:()=>{missionStep=14;showToast('Ledger secured. Return to Jesse.');saveGame();updateHUD();}},{label:'Photograph the pages (+$250)',run:()=>{cash+=250;missionStep=14;showToast('You sell a copy of the ledger. +$250.');saveGame();updateHUD();}}]);
+  else if(missionStep===18)openDialogue('WAREHOUSE CONTACT','The list confirms the shipment was split into two loads. The motel was only a transfer point. Jesse needs to know who signed the manifest.',[{label:'Take the manifest',run:()=>{missionStep=19;showToast('Manifest secured. Go to the motel.');saveGame();updateHUD();}},{label:'Sell a copy (+$400)',run:()=>{cash+=400;missionStep=19;showToast('A copy is sold. +$400.');saveGame();updateHUD();}}]);
+  else if(missionStep===23)openDialogue('WAREHOUSE ARCHIVIST','Four pieces. The receipt, the phone, the motel key envelope and the shipping tag. Together they show who rerouted the shipment and who signed for it.',[{label:'Hand over the evidence',run:()=>{missionStep=24;showToast('The evidence is verified. Return to Jesse.');saveGame();updateHUD();}},{label:'Keep a private copy (+$500)',run:()=>{cash+=500;missionStep=24;showToast('You keep a copy of the file. +$500. Return to Jesse.');saveGame();updateHUD();}}]);
+  else openDialogue('WAREHOUSE CONTACT','The warehouse is quiet for now. There is nothing new to discuss.',[{label:'Leave',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null;let best=Infinity;
+ const el=$('interaction');
+ if(driving){el.classList.add('visible');$('interaction-copy').textContent=' EXIT VEHICLE';}
+ else{
+  for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
+  const rvDistance=player.position.distanceTo(playerCar.position);
+  if(cookState==='idle'&&rvDistance<7.2&&rvDistance>3.0){best=rvDistance;active={type:'rv-cook',label:'START COOK · RV INTERIOR',pos:playerCar.position,range:7.2};}
+  if(cookState==='cooking'&&rvDistance<7.2){best=rvDistance;active={type:'rv-cook',label:'COOKING · STAY NEAR THE RV',pos:playerCar.position,range:7.2};}
+  if(cookState==='ready'){const d=player.position.distanceTo(motelClerkNPC.root.position);if(d<5.8&&d<best){best=d;active={type:'rv-sale',label:'SELL THE FINISHED PRODUCT',pos:motelClerkNPC.root.position,range:5.8};}}
+  if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
+  for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
+  if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
+  if(missionStep===22){for(const item of evidenceItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'COLLECT '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
+  if(raceStartItem.root.visible){const d=player.position.distanceTo(raceStartItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:raceStartItem,label:'START STREET TIME TRIAL',pos:raceStartItem.pos,range:5.5};}}
+   if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
+  for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}
+  if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+  else if(player.position.distanceTo(playerCar.position)<3.0){el.classList.add('visible');$('interaction-copy').textContent=' ENTER RV';}
   else el.classList.remove('visible');
  }
  let zone='RESIDENTIAL DISTRICT';
@@ -996,7 +1546,7 @@ function animate(){
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
-   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<3.0);
+   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<4.5);
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
    if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
