@@ -26,7 +26,7 @@ box(van,4.9,1.55,3.78,4.7,3.1,.22,M.wall);
 box(van,0,2.95,-3.78,14.8,.2,.22,M.dark);
 box(van,0,2.95,3.78,5.0,.2,.22,M.dark);
 for(const x of [-5.4,5.4]){box(van,x,1.9,-3.64,2.3,1.15,.08,M.glass);box(van,x,1.9,-3.57,.08,1.25,.08,M.metal);}
-box(van,0,2.7,0,13.8,.12,7.2,M.dark,false); // ceiling edge trim, roof intentionally open
+// Roof omitted so the cutaway camera can see the entire playable interior.
 // Ceiling ribs and warm practical lights.
 for(const z of [-2.9,-1.2,.5,2.2]){box(van,0,2.82,z,14.2,.12,.16,M.metal);const lamp=new THREE.PointLight(0xffdfad,8,7);lamp.position.set(0,2.55,z);scene.add(lamp);box(van,0,2.68,z,.9,.08,.32,mat(0xffe5bb,.35));}
 // Side benches, cabinets, and practical clutter.
