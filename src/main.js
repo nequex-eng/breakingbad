@@ -356,7 +356,7 @@ function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missi
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
-if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y)){
+if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
  playerCar.position.set(-6,0,8);playerCar.rotation.y=0;
  if(driving)player.position.copy(playerCar.position);
  showToast('Vehicle repositioned to a safe road after loading.');
