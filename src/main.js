@@ -88,6 +88,21 @@ box(scene,93,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 box(scene,107,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 for(let z=-44;z<=-8;z+=18)box(scene,100,.03,z,.14,.03,7,materials.yellow,false);
 box(scene,100,.012,-50,24,.025,10,materials.asphalt,false);
+ // Dust road from the remote RV camp to the Route 66 access road.
+ const desertTrack=mat(0x927b5d),trackRuts=mat(0x796448),trackEdge=mat(0xa08b6d);
+ const trackPoints=[[-190,148],[-180,112],[-160,82],[-145,55],[-145,2]];
+ for(let i=0;i<trackPoints.length-1;i++){
+  const [ax,az]=trackPoints[i],[bx,bz]=trackPoints[i+1],dx=bx-ax,dz=bz-az,length=Math.hypot(dx,dz),angle=Math.atan2(dx,dz),mx=(ax+bx)/2,mz=(az+bz)/2;
+  const road=box(scene,mx,.018,mz,8,.045,length+1,desertTrack,false);road.rotation.y=angle;
+  for(const side of [-1,1]){
+   const rut=box(scene,mx+Math.cos(angle)*side*1.75,.046,mz-Math.sin(angle)*side*1.75,.24,.025,length,trackRuts,false);rut.rotation.y=angle;
+   const shoulder=box(scene,mx+Math.cos(angle)*side*4.25,.027,mz-Math.sin(angle)*side*4.25,.38,.04,length,trackEdge,false);shoulder.rotation.y=angle;
+  }
+ }
+ for(let i=0;i<10;i++){
+  const z=142-i*14,x=-190+Math.sin(i*.42)*17;
+  for(const side of [-1,1]){const px=x+side*(6.2+Math.sin(i)*.7);cylinder(scene,px,.58,z,.12,.12,1.15,materials.dark,6);box(scene,px,.88,z,.2,.16,.1,materials.yellow,false);}
+ }
 // Route 66 Motel approach and parking apron.
 box(scene,-145,.006,-34,12,.025,68,materials.asphalt,false);
 box(scene,-152,.012,-34,1.6,.035,68,materials.sidewalk,false);
@@ -294,12 +309,12 @@ function movePedestrianSafely(npc,x,z){
  }
  return false;
 }
-function vehicleOverlapsVehicle(position,rotation,otherRoot){
+function vehicleOverlapsVehicle(position,rotation,otherRoot,movingRoot=null){
  const dx=otherRoot.position.x-position.x,dz=otherRoot.position.z-position.z;
  if(dx*dx+dz*dz>400)return false;
  const cA=Math.cos(rotation),sA=Math.sin(rotation),cB=Math.cos(otherRoot.rotation.y),sB=Math.sin(otherRoot.rotation.y);
  const axes=[[cA,-sA],[sA,cA],[cB,-sB],[sB,cB]];
- const isRV_A=position===playerCar.position,isRV_B=otherRoot===playerCar;
+ const isRV_A=movingRoot===playerCar,isRV_B=otherRoot===playerCar;
  const wA=isRV_A?2.85:1.58,lA=isRV_A?7.85:2.88,wB=isRV_B?2.85:1.58,lB=isRV_B?7.85:2.88;
  for(const [ax,az] of axes){
   const radiusA=wA*Math.abs(ax*cA-az*sA)+lA*Math.abs(ax*sA+az*cA);
@@ -324,7 +339,7 @@ function vehiclePathHitsPedestrian(from,to,rotation,vehicleRoot=null){
 function vehicleCollisionAt(position,rotation,ignoreRoot=null){
  if(!movingVehicleRoots.includes(ignoreRoot)&&(position.x< -239||position.x>239||position.z< -229||position.z>229))return 'city boundary';
  for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,b,ignoreRoot))return 'building';
- for(const other of vehicleRegistry){if(other===ignoreRoot)continue;if(vehicleOverlapsVehicle(position,rotation,other))return 'another vehicle';}
+ for(const other of vehicleRegistry){if(other===ignoreRoot)continue;if(vehicleOverlapsVehicle(position,rotation,other,ignoreRoot))return 'another vehicle';}
  for(const pedestrian of allPedestrianActors)if(pedestrian.root.visible&&vehicleOverlapsPedestrian(position,rotation,pedestrian,ignoreRoot))return 'pedestrian';
  return '';
 }
@@ -442,6 +457,8 @@ const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStor
  cookGlow.position.set(0,1.2,.05);cookMachine.add(cookGlow);
  for(let i=0;i<3;i++){const dial=new THREE.Mesh(new THREE.CircleGeometry(.12,16),new THREE.MeshBasicMaterial({color:i===1?0x9eae79:0x8b9b9a}));dial.position.set(-.48+i*.48,.55,.64);cookMachine.add(dial);}
  const sealedPackage=box(desertCamp,13,.55,2.3,1.05,1.05,1.05,mat(0x9b8a6b));sealedPackage.visible=false;
+const rvCargo=box(playerCar,0,3.36,-2.3,1.1,.2,1.15,rvLower);rvCargo.visible=false;
+const rvCargoStrap=box(playerCar,0,3.47,-2.3,.12,.08,1.2,rvChrome);rvCargoStrap.visible=false;
  for(const [x,z] of [[2,3],[16,3],[2,-4],[16,-4]])box(desertCamp,x,.62,z,1.8,1.2,1.8,campWood);
  for(const [x,z] of [[0,6],[18,7]]){cylinder(desertCamp,x,.72,z,.55,.55,1.45,campMetal,12);cylinder(desertCamp,x,.12,z,.58,.58,.12,campDark,12);}
  const campChair=new THREE.Group();campChair.position.set(15,0,5);desertCamp.add(campChair);
@@ -456,7 +473,44 @@ const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStor
  for(const [x,z] of [[-26,-15],[-23,14],[25,-18],[26,16],[-15,23],[17,24]]){cylinder(desertCamp,x,.9,z,.32,.42,1.8,materials.cactus,7);box(desertCamp,x+.36,1,z,.2,.9,.2,materials.cactus);box(desertCamp,x+.26,1.35,z,.35,.18,.2,materials.cactus);}
  worldLabel('DESERT COOK SITE',-187,147,'#d7c29a');
 
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],cookState=['idle','cooking','ready','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],cookState=['idle','cooking','ready','loaded','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=Number.isFinite(saved.cookProgress)?THREE.MathUtils.clamp(saved.cookProgress,0,1):0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
+let cookPrep=Array.isArray(saved.cookPrep)?[0,1,2].map(i=>!!saved.cookPrep[i]):[false,false,false];
+const cookWorkPos=new THREE.Vector3(-180.5,0,166.2);
+const cookPackagePos=new THREE.Vector3(-177,0,167.3);
+const cookStationSpecs=[
+ {id:'power',label:'RESTORE CAMP POWER',x:-17,z:-11,color:0xd5a54d},
+ {id:'calibration',label:'CALIBRATE CONTROL PANEL',x:22,z:-11,color:0x70b7bd},
+ {id:'seal',label:'PREPARE THE SEALED CASE',x:22,z:15,color:0xbca26c}
+];
+const cookStations=cookStationSpecs.map((spec,index)=>{
+ const root=new THREE.Group();root.position.set(spec.x,0,spec.z);desertCamp.add(root);
+ box(root,0,.66,0,2.4,1.3,1.8,campDark);
+ if(index===0){
+  box(root,0,1.47,0,1.9,.35,1.45,campMetal);
+  for(let i=0;i<5;i++)box(root,-.72+i*.36,1.5,.74,.2,.12,.06,materials.yellow,false);
+  const switchBox=box(root,.75,1.18,.96,.28,.32,.12,mat(0x9b493d));switchBox.rotation.x=-.12;
+  cylinder(root,-.72,1.63,-.15,.24,.24,.12,mat(0x303a37),12);
+ }else if(index===1){
+  box(root,0,1.48,0,2.1,.34,1.4,campMetal);
+  box(root,0,2.0,.05,1.55,.78,.12,mat(0x253537));
+  box(root,0,2.0,.125,1.25,.52,.035,mat(0x5b9e9c),false);
+  for(let i=0;i<3;i++)cylinder(root,-.62+i*.62,1.05,.78,.18,.18,.16,mat(0xc2b27e),10);
+ }else{
+  box(root,0,1.35,0,2.25,.25,1.55,campWood);
+  box(root,0,1.83,-.12,1.4,.72,1.12,mat(0x9c8c6c));
+  for(const x of [-.52,.52])box(root,x,2.22,-.12,.14,.08,1.2,campMetal);
+  box(root,0,2.24,.45,.48,.12,.12,materials.yellow,false);
+ }
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(1.72,.075,7,28),new THREE.MeshBasicMaterial({color:spec.color}));
+ ring.rotation.x=Math.PI/2;ring.position.y=.12;root.add(ring);
+ const marker=new THREE.Mesh(new THREE.ConeGeometry(.28,.78,7),new THREE.MeshBasicMaterial({color:spec.color}));marker.position.y=2.85;root.add(marker);
+ const doneLamp=new THREE.Mesh(new THREE.SphereGeometry(.18,10,8),new THREE.MeshBasicMaterial({color:0x8dc39a,emissive:0x264b2c}));
+ doneLamp.position.set(0,2.42,0);doneLamp.visible=false;root.add(doneLamp);
+ return {...spec,index,root,ring,marker,doneLamp,pos:new THREE.Vector3(-190+spec.x,0,165+spec.z)};
+});
+function nextCookStationIndex(){return cookPrep.findIndex(done=>!done);}
+function refreshCookStations(){cookStations.forEach((station,i)=>{const done=!!cookPrep[i];station.marker.visible=!done;station.doneLamp.visible=done;station.ring.material.color.setHex(done?0x6fa77c:station.color);});}
+refreshCookStations();
 let evidenceCollected=Array.isArray(saved.evidenceCollected)?saved.evidenceCollected:[],salvageCollected=Array.isArray(saved.salvageCollected)?saved.salvageCollected:[],deliveryState=['available','active','complete','failed'].includes(saved.deliveryState)?saved.deliveryState:'available',deliveryDeadline=Number.isFinite(saved.deliveryDeadline)?saved.deliveryDeadline:0,deliveryTargetIndex=Number.isFinite(saved.deliveryTargetIndex)?saved.deliveryTargetIndex:0;
 function makeActivityItem(id,label,x,z,color,kind){
  const root=new THREE.Group();root.position.set(x,0,z);scene.add(root);
@@ -496,7 +550,7 @@ const salvageItems=[
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
@@ -508,10 +562,12 @@ if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
  showToast('Vehicle repositioned to the desert camp.');
 }
 if(saved.rvCampVersion!==1){driving=false;player.visible=true;playerCar.position.set(-190,0,165);playerCar.rotation.y=0;player.position.set(-186,0,165);player.rotation.y=-Math.PI/2;yaw=-Math.PI/2;saveGame();}
-sealedPackage.visible=cookState==='ready';
+sealedPackage.visible=cookState==='ready';rvCargo.visible=cookState==='loaded';rvCargoStrap.visible=cookState==='loaded';refreshCookStations();
 function currentObjective(){
- if(cookState==='idle'||cookState==='cooking')return {name:'THE DESERT COOK SITE',pos:playerCar.position};
- if(cookState==='ready')return {name:'THE MOTEL · MAKE THE SALE',pos:locations[5].pos};
+ if(cookState==='idle'){const next=nextCookStationIndex();return next>=0?{name:cookStations[next].label,pos:cookStations[next].pos}:{name:'DESERT WORKBENCH',pos:cookWorkPos};}
+ if(cookState==='cooking')return {name:'DESERT WORKBENCH · ACTIVE',pos:cookWorkPos};
+ if(cookState==='ready')return {name:'COLLECT THE SEALED CASE',pos:cookPackagePos};
+ if(cookState==='loaded')return {name:'ROUTE 66 MOTEL · BUYER',pos:locations[5].pos};
  if(raceActive)return {name:'TIME TRIAL CHECKPOINT',pos:raceCheckpoints[raceIndex]};
  if(deliveryState==='active')return deliveryTargets[deliveryTargetIndex]||locations[1];
  if(missionStep===22){const next=evidenceItems.find(item=>!item.collected);return next?{name:next.label,pos:next.pos}:locations[2];}
@@ -520,6 +576,7 @@ function currentObjective(){
  const objectives={0:locations[0],1:locations[1],2:locations[2],3:locations[1],4:locations[3],5:locations[2],6:locations[1],7:locations[5],8:locations[0],9:locations[0],10:locations[1],11:locations[3],12:locations[5],13:locations[2],14:locations[0],15:locations[0],16:locations[3],17:locations[1],18:locations[2],19:locations[5],20:locations[0],21:locations[0],23:locations[2],24:locations[0]};
  return objectives[missionStep]||null;
 }
+
 const objectiveBeacon=new THREE.Group();
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
 beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
@@ -529,8 +586,10 @@ function updateObjectiveBeacon(time){const target=currentObjective();objectiveBe
 function updateObjectiveDistance(){
  const target=currentObjective(),el=$('objective-distance');if(!el)return;
  if(raceActive){const seconds=Math.max(0,Math.ceil((raceDeadline-Date.now())/1000));el.textContent='STREET TIME TRIAL · '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+' · CHECKPOINT '+(raceIndex+1)+' / '+raceCheckpoints.length;return;}
- if(cookState==='cooking'){el.textContent='RV COOK TIMER · '+Math.max(0,Math.ceil((1-cookProgress)*10))+' SEC';return;}
- if(cookState==='ready'){el.textContent='PRODUCT SEALED · TAKE IT TO THE MOTEL BUYER';return;}
+ if(cookState==='idle'){el.textContent='CAMP PREPARATION · '+cookPrep.filter(Boolean).length+' / 3 COMPLETE';return;}
+ if(cookState==='cooking'){el.textContent='WORKBENCH TIMER · '+Math.max(0,Math.ceil((1-cookProgress)*10))+' SEC';return;}
+ if(cookState==='ready'){el.textContent='FINISHED CASE · LOAD IT INTO THE RV';return;}
+ if(cookState==='loaded'){el.textContent='CARGO SECURED · '+Math.round(player.position.distanceTo(locations[5].pos))+' M TO BUYER';return;}
  if(deliveryState==='active'){const seconds=Math.max(0,Math.ceil((deliveryDeadline-Date.now())/1000));el.textContent='DELIVERY TIMER · '+String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+' · '+Math.round(player.position.distanceTo(target.pos))+' M';}
  else if(missionStep===22)el.textContent='EVIDENCE COLLECTED · '+evidenceCollected.length+' / 4 · '+(target?Math.round(player.position.distanceTo(target.pos))+' M':'');
  else if(missionStep>=25)el.textContent='CITY SALVAGE · '+salvageCollected.length+' / '+salvageItems.length+' · '+(target?Math.round(player.position.distanceTo(target.pos))+' M':'');
@@ -726,15 +785,22 @@ function showToast(text){
 }
 function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
- if(cookState==='idle'||cookState==='cooking'||cookState==='ready'){
-  $('mission-title').textContent=cookState==='ready'?'TAKE THE RV TO THE MOTEL BUYER':'THE DESERT RV · FIRST COOK';
-  $('mission-copy').textContent=cookState==='ready'?'The batch is sealed. Drive the Winnebago to the Route 66 Motel and meet the buyer.':cookState==='cooking'?'Stay beside the RV while the abstract cook timer runs. No real-world procedure is shown.':'The Winnebago is parked at a remote desert camp. Walk over to the work area and start the cook sequence.';
-  const p=document.querySelector('.objective-progress i');if(p)p.style.width=cookState==='ready'?'75%':cookState==='cooking'?Math.round(cookProgress*70)+'%':'25%';
-  const ch=$('chapter');if(ch)ch.textContent='SIDE STORY · THE RV RUN';
-  return;
+ if(['idle','cooking','ready','loaded'].includes(cookState)){
+  const complete=cookPrep.filter(Boolean).length,next=nextCookStationIndex();
+  const titles={idle:next>=0?'DESERT CAMP · PREP '+(complete+1)+' / 3':'DESERT CAMP · READY TO START',cooking:'DESERT WORKBENCH · ACTIVE',ready:'SEALED CASE · PICK IT UP',loaded:'RV DELIVERY · ROUTE 66 MOTEL'};
+  const copies={
+   idle:next>=0?'Complete the three physical camp stations in order: power, calibration, then secure the case. Walk to each marked station and press E.':'All three prep stations are ready. Go to the workbench beneath the canopy and press E to start the 10-second sequence.',
+   cooking:'Stay in the marked work area while the fictional production timer runs. Leaving the camp pauses progress.',
+   ready:'The sealed case is on the packing bench. Walk over and press E to load it onto the RV roof rack.',
+   loaded:'The case is secured on the RV. Drive to the Route 66 Motel, exit the vehicle and meet the buyer to complete the sale.'
+  };
+  $('mission-title').textContent=titles[cookState];$('mission-copy').textContent=copies[cookState];
+  const p=document.querySelector('.objective-progress i');
+  if(p)p.style.width=cookState==='idle'?Math.max(5,complete/3*42)+'%':cookState==='cooking'?42+Math.round(cookProgress*35)+'%':cookState==='ready'?'82%':'94%';
+  const ch=$('chapter');if(ch)ch.textContent='SIDE STORY · THE DESERT RUN';return;
  }
  const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','THE MISSING DRIVER','THE DINER WITNESS','A DRIVER WHO REMEMBERS','ROOM SIX','THE LEDGER','BACK TO JESSE','A NEW ARRANGEMENT','THE NIGHT DELIVERY','THE COURIER','THE WAREHOUSE LIST','THE MOTEL ROOM','THE FINAL HANDOFF','CHAPTER FIVE COMPLETE','FOUR PIECES OF PROOF','THE WAREHOUSE FILE','THE LAST DECISION','CHAPTER SIX COMPLETE'];
- const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner. Someone there may know more than they are saying.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','Jesse has heard from a driver who vanished after a late-night delivery. Start at the car wash.','Find the waitress who saw the delivery van leave the diner.','Track down the driver at the gas station. He knows where the van went.','Go to the Route 66 Motel. Someone kept a room key for the driver.','The room key leads to a ledger hidden at the desert warehouse.','Take the ledger back to Jesse at A-1 Car Wash.','Jesse has another job. A night delivery went missing on the east side.','Find the night driver at the gas station before the police do.','A courier is waiting at the diner with a route and a warning.','The warehouse contact has the shipment list. Get the truth.','Meet the motel manager. The missing cargo was moved through room six.','Return to Jesse. This time, decide what happens to the shipment.','The fifth chapter is complete. A new investigation is available.','Search the streets for four physical pieces of evidence. They are visible in the world; no conversation required.','Bring all four pieces of evidence to the warehouse archivist.','Return to Jesse and decide what to do with the evidence.','Chapter Six is complete. Albuquerque remains open for side activities.'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner. Someone there may know more than they are saying.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','Jesse has heard from a driver who vanished after a late-night delivery. Start at the car wash.','Find the waitress who saw the delivery van leave the diner.','Track down the driver at the gas station. He knows where the van went.','Go to the Route 66 Motel. Someone kept a room key for the driver.','The room key leads to a ledger hidden at the desert warehouse.','Take the ledger back to Jesse at A-1 Car Wash.','Jesse has another job. A night delivery went missing on the east side.','Find the night driver at the gas station before the police do.','A courier is waiting at the diner with a route and a warning.','The warehouse contact has the shipment list. Get the truth.','Meet the motel manager. The missing cargo was moved through room six.','Return to Jesse. This time, decide what happens to the shipment.','The fifth chapter is complete. A new investigation is available.','Search the streets for four physical pieces of evidence. They are visible in the world; no conversation required.','Bring all four pieces to the warehouse archivist.','Return to Jesse and decide what to do with the evidence.','Chapter Six is complete. Albuquerque remains open for side activities.'];
  const step=Math.min(missionStep,titles.length-1);
  $('mission-title').textContent=titles[step];$('mission-copy').textContent=copies[step];
  const progress=document.querySelector('.objective-progress i');
@@ -763,22 +829,25 @@ $('mission-toggle').addEventListener('click',()=>{
 
 function interact(target){
  if(!target)return;
- if(target.type==='rv-cook'){
-  if(cookState==='idle'){
-   openDialogue('THE RV','The old Winnebago is ready. Start a fictional, abstract cook sequence? No recipes or real-world procedures—just a short in-game production challenge.',[
-    {label:'START COOK · 10 SECONDS',run:()=>{cookState='cooking';cookProgress=0;showToast('Cook started. Stay beside the RV until the timer completes.');saveGame();updateHUD();}},
-    {label:'NOT YET',run:()=>{}}
-   ]);
-  }else if(cookState==='cooking')showToast('The cook is underway. Stay close to the RV.');
-  return;
- }
- if(target.type==='rv-sale'){
-  openDialogue('MOTEL BUYER','You brought it? Keep this quiet. The buyer checks the sealed package and counts out the cash.',[
-   {label:'SELL FINISHED PRODUCT · +$2,500',run:()=>{cookState='sold';cash+=2500;sealedPackage.visible=false;showToast('Buyer paid · sale complete · +$2,500.');saveGame();updateHUD();}},
-   {label:'WALK AWAY',run:()=>{}}
-  ]);return;
- }
- if(target.type==='activity-item'){
+ if(target.type==='rv-station'){
+   const i=target.index;if(cookState!=='idle'||i!==nextCookStationIndex())return;
+   cookPrep[i]=true;refreshCookStations();showToast(cookStations[i].label+' · '+cookPrep.filter(Boolean).length+' / 3');saveGame();updateHUD();return;
+  }
+  if(target.type==='rv-cook'){
+   if(cookState==='idle'){if(nextCookStationIndex()>=0){showToast('Finish all three marked camp stations first.');return;}cookState='cooking';cookProgress=0;showToast('Work sequence started. Stay by the workbench while the timer runs.');saveGame();updateHUD();}
+   else if(cookState==='cooking')showToast('The work sequence is active. Stay in the marked camp area.');return;
+  }
+  if(target.type==='rv-package'){
+   if(cookState!=='ready')return;cookState='loaded';sealedPackage.visible=false;rvCargo.visible=true;rvCargoStrap.visible=true;
+   showToast('Sealed case loaded and strapped to the RV. Head for the Route 66 Motel.');saveGame();updateHUD();return;
+  }
+  if(target.type==='rv-sale'){
+   if(cookState!=='loaded'){showToast('The buyer will not deal until the sealed case is loaded in the RV.');return;}
+   openDialogue('MOTEL BUYER','The buyer checks the case strapped to your Winnebago, then counts out the payment.',[
+    {label:'COMPLETE THE SALE · +$2,500',run:()=>{cookState='sold';cash+=2500;sealedPackage.visible=false;rvCargo.visible=false;rvCargoStrap.visible=false;showToast('Buyer paid · sale complete · +$2,500.');saveGame();updateHUD();}},
+    {label:'WALK AWAY',run:()=>{}}
+   ]);return;
+  }if(target.type==='activity-item'){
   const item=target.item;
   if(item.kind==='race'){
    if(raceActive){showToast('A time trial is already active.');return;}
@@ -866,10 +935,15 @@ function updateActive(){
  else{
   for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
   const rvDistance=player.position.distanceTo(playerCar.position);
-  if(cookState==='idle'&&rvDistance<7.2&&rvDistance>3.0){best=rvDistance;active={type:'rv-cook',label:'START COOK · DESERT WORK AREA',pos:playerCar.position,range:7.2};}
-  if(cookState==='cooking'&&rvDistance<7.2){best=rvDistance;active={type:'rv-cook',label:'COOKING · WORK AREA ACTIVE',pos:playerCar.position,range:7.2};}
-  if(cookState==='ready'){const d=player.position.distanceTo(motelClerkNPC.root.position);if(d<5.8&&d<best){best=d;active={type:'rv-sale',label:'SELL THE FINISHED PRODUCT',pos:motelClerkNPC.root.position,range:5.8};}}
-  if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
+if(cookState==='idle'){
+ const next=nextCookStationIndex();
+ if(next>=0){const station=cookStations[next],d=player.position.distanceTo(station.pos);if(d<5.2&&d<best){best=d;active={type:'rv-station',index:next,label:station.label,pos:station.pos,range:5.2};}}
+ else{const d=player.position.distanceTo(cookWorkPos);if(d<5.8&&d<best){best=d;active={type:'rv-cook',label:'START WORK SEQUENCE · 10 SEC',pos:cookWorkPos,range:5.8};}}
+}
+if(cookState==='cooking'){const d=player.position.distanceTo(cookWorkPos);if(d<7.5&&d<best){best=d;active={type:'rv-cook',label:'WORK SEQUENCE · '+Math.max(0,Math.ceil((1-cookProgress)*10))+' SEC',pos:cookWorkPos,range:7.5};}}
+if(cookState==='ready'){const d=player.position.distanceTo(cookPackagePos);if(d<5.2&&d<best){best=d;active={type:'rv-package',label:'LOAD SEALED CASE INTO RV',pos:cookPackagePos,range:5.2};}}
+if(cookState==='loaded'){const d=player.position.distanceTo(motelClerkNPC.root.position);if(d<5.8&&d<best){best=d;active={type:'rv-sale',label:'SELL THE FINISHED PRODUCT',pos:motelClerkNPC.root.position,range:5.8};}}
+   if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
   for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
   if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
   if(missionStep===22){for(const item of evidenceItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'COLLECT '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
@@ -877,7 +951,7 @@ function updateActive(){
    if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
   for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}
   if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
-  else if(player.position.distanceTo(playerCar.position)<3.0){el.classList.add('visible');$('interaction-copy').textContent=' ENTER RV';}
+  else if(player.position.distanceTo(playerCar.position)<5.0){el.classList.add('visible');$('interaction-copy').textContent=' ENTER RV';}
   else el.classList.remove('visible');
  }
  let zone='RESIDENTIAL DISTRICT';
@@ -887,6 +961,7 @@ function updateActive(){
  if(player.position.distanceTo(locations[3].pos)<35)zone='GAS STATION';
  if(player.position.distanceTo(locations[4].pos)<24)zone='POLICE PATROL';
  if(player.position.distanceTo(locations[5].pos)<32)zone='ROUTE 66 MOTEL';
+  if(player.position.distanceTo(new THREE.Vector3(-190,0,165))<62)zone='DESERT COOK SITE';
  $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';updateObjectiveDistance();drawMiniMap();
 }
 function drawMiniMap(){
@@ -909,7 +984,8 @@ function drawWorldMap(){
  for(let x=-250;x<=250;x+=25){const q=p(x,0);ctx.beginPath();ctx.moveTo(q.x,35);ctx.lineTo(q.x,h-35);ctx.stroke();}
  for(let z=-250;z<=250;z+=25){const q=p(0,z);ctx.beginPath();ctx.moveTo(35,q.y);ctx.lineTo(w-35,q.y);ctx.stroke();}
  ctx.lineCap='square';ctx.strokeStyle='#70736b';ctx.lineWidth=19*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(-260,0)));ctx.lineTo(...Object.values(p(260,0)));ctx.stroke();
- ctx.strokeStyle='#686c64';ctx.lineWidth=15*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(100,0)));ctx.lineTo(...Object.values(p(100,-52)));ctx.moveTo(...Object.values(p(-145,0)));ctx.lineTo(...Object.values(p(-145,-68)));ctx.stroke();
+ ctx.strokeStyle='#927b5d';ctx.lineWidth=8*scale;ctx.beginPath();trackPoints.forEach((v,i)=>{const q=p(v[0],v[1]);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);});ctx.stroke();
+  ctx.strokeStyle='#686c64';ctx.lineWidth=15*scale;ctx.beginPath();ctx.moveTo(...Object.values(p(100,0)));ctx.lineTo(...Object.values(p(100,-52)));ctx.moveTo(...Object.values(p(-145,0)));ctx.lineTo(...Object.values(p(-145,-68)));ctx.stroke();
  ctx.strokeStyle='#d0b36a';ctx.lineWidth=2;ctx.setLineDash([9,10]);ctx.beginPath();ctx.moveTo(...Object.values(p(-250,0)));ctx.lineTo(...Object.values(p(250,0)));ctx.moveTo(...Object.values(p(100,-4)));ctx.lineTo(...Object.values(p(100,-50)));ctx.moveTo(...Object.values(p(-145,-4)));ctx.lineTo(...Object.values(p(-145,-66)));ctx.stroke();ctx.setLineDash([]);
  const block=(x,z,bw,bd,color)=>{const q=p(x,z);ctx.fillStyle=color;ctx.fillRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);ctx.strokeStyle='rgba(227,211,169,.35)';ctx.lineWidth=1;ctx.strokeRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);};
  [[-30,-38,14,11],[-58,-38,12,10],[8,-44,12,10],[42,-42,14,11],[-70,38,11,9],[70,42,14,10]].forEach(v=>block(v[0],v[1],v[2],v[3],'#887f6e'));
@@ -925,7 +1001,8 @@ function drawWorldMap(){
  }
  for(const item of [...evidenceItems,...salvageItems]){if(item.root.visible){const q=p(item.pos.x,item.pos.z);ctx.fillStyle=item.kind==='salvage'?'#9ac7a4':'#e5c979';ctx.fillRect(q.x-5,q.y-5,10,10);}}
  if(deliveryItem.root.visible){const q=p(deliveryItem.pos.x,deliveryItem.pos.z);ctx.fillStyle='#8fc4d2';ctx.fillRect(q.x-6,q.y-6,12,12);}
- const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
+ const camp=p(-190,165);ctx.fillStyle='#d0a75e';ctx.beginPath();ctx.arc(camp.x,camp.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e0d1aa';ctx.font='bold 12px monospace';ctx.fillText('DESERT RV CAMP',camp.x+10,camp.y-8);
+  const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
  const car=p(playerCar.position.x,playerCar.position.z);ctx.save();ctx.translate(car.x,car.y);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#83bfd1';ctx.fillRect(-7,-13,14,26);ctx.restore();
  const me=p(player.position.x,player.position.z);ctx.save();ctx.translate(me.x,me.y);ctx.rotate(-player.rotation.y);ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.restore();
  const objectiveText=target?target.name+' · '+Math.round(player.position.distanceTo(target.pos))+' M':'FREE ROAM';
@@ -951,14 +1028,14 @@ const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypoi
 $('map-close').onclick=()=>setMapOpen(false);
 function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('RV entered · W accelerate · A/D steer · S reverse · H horn');updateActive();}
 function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
-function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item'||active.type==='rv-cook'||active.type==='rv-sale')){interact(active);return;}if(player.position.distanceTo(playerCar.position)<3.0){enterVehicle();return;}if(active)interact(active);}
+function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item'||active.type==='rv-cook'||active.type==='rv-sale'||active.type==='rv-station'||active.type==='rv-package')){interact(active);return;}if(player.position.distanceTo(playerCar.position)<5.0){enterVehicle();return;}if(active)interact(active);}
 
 window.addEventListener('keydown',e=>{
  unlockGameAudio();
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  if(e.code==='KeyM'){setMapOpen(!mapOpen);return;}
   if(e.code==='KeyH'&&driving){playHorn();return;}
- if(e.code==='KeyC'&&!driving&&player.position.distanceTo(playerCar.position)<7.2){interact({type:'rv-cook'});return;}
+ if(e.code==='KeyC'&&!driving&&active?.type==='rv-cook'){interact(active);return;}
  if(e.code==='Escape'){if(mapOpen)setMapOpen(false);else closeDialogue();return;}
  if(mapOpen)return;
  keys[e.code]=true;
@@ -1045,10 +1122,10 @@ function animate(){
  uiRefreshClock+=dt;
  if(!dialogOpen&&!mapOpen){
   crashCooldown=Math.max(0,crashCooldown-dt);
-  if(cookState==='cooking'&&!driving&&player.position.distanceTo(playerCar.position)<7.2){
+  if(cookState==='cooking'&&!driving&&player.position.distanceTo(cookWorkPos)<7.5){
    cookProgress=Math.min(1,cookProgress+dt/10);
    const bar=document.querySelector('.objective-progress i');if(bar)bar.style.width=Math.round(cookProgress*70)+'%';
-   if(cookProgress>=1){cookState='ready';sealedPackage.visible=true;showToast('Production complete · no payment yet. Take the finished package to the Route 66 Motel and sell it.');saveGame();updateHUD();}
+   if(cookProgress>=1){cookState='ready';sealedPackage.visible=true;showToast('Work sequence complete · no payment yet. Collect the sealed case and load it into the RV.');saveGame();updateHUD();}
   }
   trafficCars.forEach(t=>{
    const start=t.root.position.clone();
@@ -1127,7 +1204,7 @@ function animate(){
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
-   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?9.1:4.5));
+   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?4.0:4.5));
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
    if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
@@ -1153,6 +1230,7 @@ function animate(){
   }
  }
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.008)*.34:0;
+  cookStations.forEach((station,i)=>{station.ring.rotation.z+=dt*(i%2?-.55:.55);if(station.marker.visible)station.marker.position.y=2.85+Math.sin(animTime*.003+i)*.13;});
   const cookingNow=cookState==='cooking';cookGlow.material.opacity=cookingNow?.72:.18;cookGlow.scale.setScalar(cookingNow?1.08+Math.sin(animTime*.012)*.12:1);campLight.intensity=cookingNow?1.35:0;
   vaporPuffs.forEach((p,i)=>{p.material.opacity=cookingNow?.22:0;p.position.y=2.1+i*.34+(cookingNow?((animTime*.00055+i*.23)%1)*.75:0);p.scale.setScalar(cookingNow?(.75+Math.sin(animTime*.004+i)*.25):.01);});
  for(const item of [...evidenceItems,...salvageItems,deliveryItem,raceStartItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
