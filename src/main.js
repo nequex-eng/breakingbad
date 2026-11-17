@@ -230,14 +230,31 @@ function vehicleOverlapsPedestrian(position,rotation,npc){
  const dx=npc.root.position.x-position.x,dz=npc.root.position.z-position.z;
  if(dx*dx+dz*dz>36)return false;
  const c=Math.cos(rotation),s=Math.sin(rotation);
- const localX=dx*c-dz*s,localZ=dx*s+dz*c;
- const nearestX=THREE.MathUtils.clamp(localX,-1.72,1.72),nearestZ=THREE.MathUtils.clamp(localZ,-3.02,3.02);
+ const localX=dx*c+dz*s,localZ=-dx*s+dz*c;
+ const nearestX=THREE.MathUtils.clamp(localX,-1.48,1.48),nearestZ=THREE.MathUtils.clamp(localZ,-2.72,2.72);
  const side=localX-nearestX,front=localZ-nearestZ;
- return side*side+front*front<1.22*1.22;
+ return side*side+front*front<.82*.82;
 }
 function pedestrianBlockedByAnyVehicle(x,z){
  const probe={root:{position:new THREE.Vector3(x,0,z)}};
  return vehicleRegistry.some(vehicle=>vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,probe));
+}
+function separatePedestriansFromAllVehicles(){
+ for(const npc of pedestrianActors){
+  if(!npc.root.visible)continue;
+  for(const vehicle of vehicleRegistry){
+   if(!vehicleOverlapsPedestrian(vehicle.position,vehicle.rotation.y,npc))continue;
+   const dx=npc.root.position.x-vehicle.position.x,dz=npc.root.position.z-vehicle.position.z;
+   const c=Math.cos(vehicle.rotation.y),s=Math.sin(vehicle.rotation.y);
+   const lx=dx*c+dz*s,lz=-dx*s+dz*c;
+   const px=THREE.MathUtils.clamp(lx,-1.48,1.48),pz=THREE.MathUtils.clamp(lz,-2.72,2.72);
+   let nx=lx-px,nz=lz-pz,len=Math.hypot(nx,nz);
+   if(len<.001){nx=lx/Math.max(.001,Math.hypot(lx,lz));nz=lz/Math.max(.001,Math.hypot(lx,lz));len=1;}
+   const push=.86/len,outX=lx+nx*push,outZ=lz+nz*push;
+   npc.root.position.x=vehicle.position.x+outX*c-outZ*s;
+   npc.root.position.z=vehicle.position.z+outX*s+outZ*c;
+  }
+ }
 }
 function movePedestrianSafely(npc,x,z){
  if(!pedestrianBlockedByAnyVehicle(x,z)){npc.root.position.x=x;npc.root.position.z=z;return true;}
@@ -419,7 +436,6 @@ function updateObjectiveDistance(){
 
 const keys={};
 let yaw=Math.PI, pitch=.25, dragging=false, lastX=0,lastY=0;
-let firstPerson=false;
 const cameraTarget=new THREE.Vector3();
 
 // Keep the follow camera outside the main building shells instead of letting it clip through walls.
@@ -746,14 +762,9 @@ $('world-map').addEventListener('click',e=>{
 });
 const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
 $('map-close').onclick=()=>setMapOpen(false);
-function setFirstPerson(enabled){
- firstPerson=!!enabled;if(!driving)player.visible=!firstPerson;
- const button=$('view-toggle');if(button){button.textContent=firstPerson?'3RD PERSON':'1ST PERSON';button.setAttribute('aria-pressed',String(firstPerson));}
-}
-function toggleView(){setFirstPerson(!firstPerson);showToast(firstPerson?'First-person view enabled. Drag to look around.':'Third-person view enabled.');}
-$('view-toggle').addEventListener('click',toggleView);
+const viewButton=$('view-toggle');if(viewButton)viewButton.remove();
 function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
-function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=!firstPerson;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y+Math.PI;showToast('You stepped out of the vehicle.');updateActive();}
+function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y+Math.PI;showToast('You stepped out of the vehicle.');updateActive();}
 function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item')){interact(active);return;}if(player.position.distanceTo(playerCar.position)<4.8){enterVehicle();return;}if(active)interact(active);}
 
 window.addEventListener('keydown',e=>{
@@ -839,6 +850,7 @@ function animate(){
    if(blocked&&blocked!=='pedestrian')t.direction*=-1;
    t.root.rotation.y=t.direction>0?Math.PI/2:-Math.PI/2;
   });
+  separatePedestriansFromAllVehicles();
   if(driving){
    const throttle=THREE.MathUtils.clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY,-1,1);
    const steering=THREE.MathUtils.clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX,-1,1);
@@ -932,18 +944,12 @@ function animate(){
   });
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
- if(firstPerson){
-  if(driving)yaw=playerCar.rotation.y;
-   const origin=driving?playerCar.localToWorld(new THREE.Vector3(0,1.72,1.02)):new THREE.Vector3(player.position.x,1.72,player.position.z);
-  const lookDirection=new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch),Math.sin(pitch),Math.cos(yaw)*Math.cos(pitch));
-  camera.position.lerp(origin,1-Math.pow(.001,dt));camera.lookAt(origin.clone().addScaledVector(lookDirection,24));
- }else{
-  const camDist=driving?15:10.5,cameraYaw=driving?playerCar.rotation.y:yaw;
-  const offset=driving?new THREE.Vector3(-Math.sin(cameraYaw)*camDist,5.2,-Math.cos(cameraYaw)*camDist):new THREE.Vector3(Math.sin(cameraYaw)*camDist,4.5+pitch*5,Math.cos(cameraYaw)*camDist);
-  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
-  const desired=keepCameraOutsideWalls(cameraTarget,cameraTarget.clone().add(offset));
-  camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(cameraTarget);
- }
+ const cameraYaw=driving?playerCar.rotation.y:yaw;
+ const camDist=driving?13.5:8.8,cameraHeight=driving?2.15:1.55;
+ cameraTarget.set(player.position.x,player.position.y+(driving?1.75:2.35),player.position.z);
+ const offset=new THREE.Vector3(-Math.sin(cameraYaw)*camDist,cameraHeight,-Math.cos(cameraYaw)*camDist);
+ const desired=keepCameraOutsideWalls(cameraTarget,cameraTarget.clone().add(offset));
+ camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(cameraTarget);
  landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));
  renderer.render(scene,camera);
 }
