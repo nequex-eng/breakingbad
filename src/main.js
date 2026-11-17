@@ -325,7 +325,7 @@ function updateObjectiveDistance(){const target=currentObjective();const el=$('o
 function updateHealthUI(){ /* Health remains a gameplay mechanic; visual health bars are intentionally removed. */ }
 function damagePlayer(amount,reason='You were hurt.'){
  health=Math.max(0,health-amount);updateHealthUI();saveGame();showToast(reason+' Health -'+amount+'.');
- if(health<=0){health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,29);showToast('You recovered at the diner. $300 lost; health restored.');updateHealthUI();saveGame();updateHUD();}
+ if(health<=0){health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,37);showToast('You recovered at the diner. $300 lost; health restored.');updateHealthUI();saveGame();updateHUD();}
 }
 function healPlayer(amount,cost=0){if(cost>cash){showToast('Not enough cash for treatment.');return false;}cash-=cost;health=Math.min(100,health+amount);updateHealthUI();saveGame();updateHUD();return true;}
 const keys={};
