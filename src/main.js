@@ -153,7 +153,13 @@ function car(x,z,color,rotation=0){
 }
 const playerCar=car(-6,8,0x8d8d86,0); car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
-let driving=false,driveSpeed=0;
+const trafficCars=[
+ {root:car(-210,-4,0x87918d,Math.PI/2),direction:1,speed:12},
+ {root:car(-55,4,0x8d594d,-Math.PI/2),direction:-1,speed:10},
+ {root:car(135,-4,0xc6c1b2,Math.PI/2),direction:1,speed:14},
+ {root:car(230,4,0x596d7a,-Math.PI/2),direction:-1,speed:11}
+];
+let driving=false,driveSpeed=0,crashCooldown=0;
 
 // Player character, original low-poly civilian silhouette
 const player=new THREE.Group(); scene.add(player);
@@ -183,6 +189,7 @@ const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
 const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation.y=Math.PI;
 const policeNPC=makeNPC(96,30,0x344e6b,0x242b32);policeNPC.root.rotation.y=Math.PI;
+const gasContactNPC=makeNPC(73,27,0x57445e,0x30323c,0x9d7358);gasContactNPC.root.rotation.y=Math.PI;
 const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
 
 const locations=[
@@ -277,7 +284,7 @@ function interact(target){
   if(missionStep===4)gasChoices.push({label:'Meet the stranger (continue the story)',run:()=>{missionStep=5;trust=Math.min(100,trust+6);heat=Math.min(100,heat+8);showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}});
   gasChoices.push({label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}});
   gasChoices.push({label:'Rest and recover (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}});
-  openDialogue('GAS STATION','A quiet stop beside the highway. Someone has been waiting here, asking for you.',gasChoices);
+  openDialogue(missionStep===4?'THE STRANGER':'GAS STATION',missionStep===4?'You came. Keep your voice down. I have a name, a place, and a reason this needs to stay quiet.':'A quiet stop beside the highway. The attendant offers first aid and a chance to regroup.',gasChoices);
  }else if(target.type==='police'){
   if(policeHelpUsed)openDialogue('OFFICER','I already gave you a warning. Keep moving and stay out of trouble.',[{label:'Walk away',run:()=>{}}]);
   else if(heat>=30)openDialogue('OFFICER','We have heard a few things about you. You can cooperate, or make this more difficult.',[
@@ -397,6 +404,8 @@ function animate(){
  const dt=Math.min(clock.getDelta(),.04);
  let walkingNow=false;
  if(!dialogOpen&&!mapOpen){
+  crashCooldown=Math.max(0,crashCooldown-dt);
+  trafficCars.forEach(t=>{t.root.position.x+=t.direction*t.speed*dt;if(t.root.position.x>265)t.root.position.x=-265;if(t.root.position.x< -265)t.root.position.x=265;});
   if(driving){
    const throttle=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
    const steering=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
@@ -409,9 +418,13 @@ function animate(){
    const solid=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7],[19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[98,23,2,3.6]];
    const blocked=(x,z)=>solid.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.8&&Math.abs(z-oz)<rz+1.8);
    const oldX=playerCar.position.x,oldZ=playerCar.position.z;
-   if(!blocked(next.x,oldZ))playerCar.position.x=next.x;
-   if(!blocked(playerCar.position.x,next.z))playerCar.position.z=next.z;
-   if(playerCar.position.x!==next.x||playerCar.position.z!==next.z)driveSpeed*=.18;
+   const trafficHit=trafficCars.some(t=>Math.abs(next.x-t.root.position.x)<4.8&&Math.abs(next.z-t.root.position.z)<2.8);
+   if(trafficHit){driveSpeed*=-.22;if(crashCooldown<=0){damagePlayer(8,'A traffic collision.');heat=Math.min(100,heat+2);updateHUD();crashCooldown=1.4;}}
+   else{
+    if(!blocked(next.x,oldZ))playerCar.position.x=next.x;
+    if(!blocked(playerCar.position.x,next.z))playerCar.position.z=next.z;
+    if(playerCar.position.x!==next.x||playerCar.position.z!==next.z)driveSpeed*=.18;
+   }
    playerCar.position.x=THREE.MathUtils.clamp(playerCar.position.x,-245,245);playerCar.position.z=THREE.MathUtils.clamp(playerCar.position.z,-235,235);
    player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
    $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H';
@@ -440,7 +453,7 @@ function animate(){
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
- animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;ambientNPCs.forEach((npc,i)=>{animateNpc(npc);npc.root.rotation.y+=Math.sin(animTime*.00025+i)*.00015;});
+ animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;ambientNPCs.forEach((npc,i)=>{animateNpc(npc);npc.root.rotation.y+=Math.sin(animTime*.00025+i)*.00015;});
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  const camDist=driving?15:10.5;
