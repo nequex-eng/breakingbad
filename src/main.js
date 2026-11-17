@@ -203,7 +203,7 @@ const trafficCars=[
  {root:car(135,-4,0xc6c1b2,Math.PI/2),direction:1,speed:14},
  {root:car(230,4,0x596d7a,-Math.PI/2),direction:-1,speed:11}
 ];
-let driving=false,driveSpeed=0,crashCooldown=0;
+let driving=false,driveSpeed=0,crashCooldown=0,fuel=100;
 const movingVehicleRoots=trafficCars.map(t=>t.root);
 const vehicleBlockers=[
  {x:-30,z:-38,halfX:6.9,halfZ:5.18},{x:-58,z:-38,halfX:6,halfZ:4.5},
@@ -400,7 +400,8 @@ const salvageItems=[
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
@@ -638,6 +639,10 @@ function interact(target){
    if(salvageCollected.length===salvageItems.length)showToast('Neighborhood salvage route complete · +$1,375 earned');
    updateHUD();saveGame();return;
   }
+ }else if(target.type==='gas-refuel'){
+  if(fuel>=100){showToast('The tank is already full.');return;}
+  if(cash<300){showToast('Refueling costs $300. You do not have enough cash.');return;}
+  cash-=300;fuel=100;showToast('Vehicle refueled · -$300');updateHUD();saveGame();return;
  }else if(target.type==='delivery-drop'){
   if(deliveryState==='active'){deliveryState='complete';deliveryDeadline=0;cash+=1250;showToast('Delivery completed on time. +$1,250');updateHUD();saveGame();}
   return;
@@ -698,6 +703,7 @@ function updateActive(){
  if(driving){el.classList.add('visible');$('interaction-copy').textContent=' EXIT VEHICLE';}
  else{
   for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
+  if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
   for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
   if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
   if(missionStep===22){for(const item of evidenceItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'COLLECT '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
@@ -854,7 +860,10 @@ function animate(){
   if(driving){
    const throttle=THREE.MathUtils.clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY,-1,1);
    const steering=THREE.MathUtils.clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX,-1,1);
-   driveSpeed=THREE.MathUtils.clamp(driveSpeed+throttle*15*dt,-10,24);
+   const effectiveThrottle=(fuel<=0&&throttle>0)?0:throttle;
+   driveSpeed=THREE.MathUtils.clamp(driveSpeed+effectiveThrottle*15*dt,-10,24);
+   if(fuel<=0&&driveSpeed>0)driveSpeed=Math.max(0,driveSpeed-18*dt);
+   fuel=THREE.MathUtils.clamp(fuel-Math.abs(driveSpeed)*dt*.018,0,100);
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
    const oldRotation=playerCar.rotation.y;
@@ -877,7 +886,7 @@ function animate(){
    }
    playerCar.position.x=THREE.MathUtils.clamp(playerCar.position.x,-245,245);playerCar.position.z=THREE.MathUtils.clamp(playerCar.position.z,-235,235);
    player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
-   $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H';
+   $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H · FUEL '+Math.round(fuel)+'%';
   }else{
    $('drive-info').textContent='ON FOOT';
    const forward=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+joystickY;
