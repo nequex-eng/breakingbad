@@ -188,6 +188,41 @@ const trafficCars=[
  {root:car(230,4,0x596d7a,-Math.PI/2),direction:-1,speed:11}
 ];
 let driving=false,driveSpeed=0,crashCooldown=0;
+const vehicleBlockers=[
+ {x:-30,z:-38,halfX:6.9,halfZ:5.18},{x:-58,z:-38,halfX:6,halfZ:4.5},
+ {x:8,z:-44,halfX:6,halfZ:4.5},{x:42,z:-42,halfX:6.6,halfZ:4.95},
+ {x:-70,z:38,halfX:5.4,halfZ:4.05},{x:70,z:42,halfX:6.6,halfZ:4.95},
+ {x:36,z:28,halfX:14.5,halfZ:9},{x:-82,z:7,halfX:12,halfZ:7.5},
+ {x:100,z:-70,halfX:19,halfZ:15},{x:78,z:8,halfX:10,halfZ:6.5},
+ {x:-145,z:-76,halfX:28,halfZ:6.5},
+ {x:73,z:19,halfX:.8,halfZ:.8},{x:78,z:19,halfX:.8,halfZ:.8},{x:83,z:19,halfX:.8,halfZ:.8}
+];
+function addParkedCarBlocker(x,z,rotation){
+ const c=Math.abs(Math.cos(rotation)),s=Math.abs(Math.sin(rotation));
+ vehicleBlockers.push({x,z,halfX:1.45*c+2.65*s,halfZ:1.45*s+2.65*c});
+}
+addParkedCarBlocker(19,15,-.4);addParkedCarBlocker(-93,19,.2);
+addParkedCarBlocker(51,-20,-.2);addParkedCarBlocker(98,23,0);
+const VEHICLE_HALF_WIDTH=1.48,VEHICLE_HALF_LENGTH=2.72;
+function vehicleOverlapsBox(position,rotation,b){
+ const dx=position.x-b.x,dz=position.z-b.z;
+ const rightX=Math.cos(rotation),rightZ=-Math.sin(rotation);
+ const forwardX=Math.sin(rotation),forwardZ=Math.cos(rotation);
+ const axes=[[1,0],[0,1],[rightX,rightZ],[forwardX,forwardZ]];
+ for(const [ax,az] of axes){
+  const distance=Math.abs(dx*ax+dz*az);
+  const obstacleRadius=b.halfX*Math.abs(ax)+b.halfZ*Math.abs(az);
+  const vehicleRadius=VEHICLE_HALF_WIDTH*Math.abs(ax*rightX+az*rightZ)+VEHICLE_HALF_LENGTH*Math.abs(ax*forwardX+az*forwardZ);
+  if(distance>obstacleRadius+vehicleRadius)return false;
+ }
+ return true;
+}
+function vehicleCollisionAt(position,rotation){
+ for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,rotation,b))return 'building or parked vehicle';
+ for(const npc of pedestrianActors)if(Math.hypot(position.x-npc.root.position.x,position.z-npc.root.position.z)<3.05)return 'pedestrian';
+ for(const traffic of trafficCars)if(Math.hypot(position.x-traffic.root.position.x,position.z-traffic.root.position.z)<4.1)return 'traffic';
+ return '';
+}
 
 // Player character, original low-poly civilian silhouette
 const player=new THREE.Group(); scene.add(player);
@@ -321,30 +356,47 @@ function keepCameraOutsideWalls(origin,desired){
 
 let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,soundEnabled=false,footstepClock=0;
 function setupGameAudio(){
+ if(audioContext)return true;
  const AudioCtor=window.AudioContext||window.webkitAudioContext;
  if(!AudioCtor){showToast('Audio is not supported by this browser.');return false;}
- audioContext=new AudioCtor();
- audioMaster=audioContext.createGain();audioMaster.gain.value=0;audioMaster.connect(audioContext.destination);
- const buffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate),data=buffer.getChannelData(0);
- for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.34;
- const wind=audioContext.createBufferSource();wind.buffer=buffer;wind.loop=true;
- const windFilter=audioContext.createBiquadFilter();windFilter.type='lowpass';windFilter.frequency.value=420;
- windGain=audioContext.createGain();windGain.gain.value=.18;wind.connect(windFilter);windFilter.connect(windGain);windGain.connect(audioMaster);wind.start();
- engineOsc=audioContext.createOscillator();engineOsc.type='sawtooth';engineOsc.frequency.value=42;
- const engineFilter=audioContext.createBiquadFilter();engineFilter.type='lowpass';engineFilter.frequency.value=180;
- engineGain=audioContext.createGain();engineGain.gain.value=0;engineOsc.connect(engineFilter);engineFilter.connect(engineGain);engineGain.connect(audioMaster);engineOsc.start();
- return true;
+ try{
+  audioContext=new AudioCtor();
+  audioMaster=audioContext.createGain();audioMaster.gain.value=0;audioMaster.connect(audioContext.destination);
+  const buffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate),data=buffer.getChannelData(0);
+  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.42;
+  const wind=audioContext.createBufferSource();wind.buffer=buffer;wind.loop=true;
+  const windFilter=audioContext.createBiquadFilter();windFilter.type='lowpass';windFilter.frequency.value=760;
+  windGain=audioContext.createGain();windGain.gain.value=.28;wind.connect(windFilter);windFilter.connect(windGain);windGain.connect(audioMaster);wind.start();
+  engineOsc=audioContext.createOscillator();engineOsc.type='sawtooth';engineOsc.frequency.value=58;
+  const engineFilter=audioContext.createBiquadFilter();engineFilter.type='lowpass';engineFilter.frequency.value=260;
+  engineGain=audioContext.createGain();engineGain.gain.value=0;engineOsc.connect(engineFilter);engineFilter.connect(engineGain);engineGain.connect(audioMaster);engineOsc.start();
+  return true;
+ }catch(error){showToast('Could not start audio: '+(error?.message||'browser audio error'));return false;}
 }
-async function toggleGameAudio(){
- if(!audioContext&&!setupGameAudio())return;
- try{if(audioContext.state==='suspended')await audioContext.resume();}catch{return;}
- soundEnabled=!soundEnabled;
- audioMaster.gain.setTargetAtTime(soundEnabled?.32:0,audioContext.currentTime,.22);
+function setGameAudioEnabled(enabled){
+ if(!audioContext||!audioMaster)return;
+ soundEnabled=enabled;
+ audioMaster.gain.setTargetAtTime(soundEnabled?.58:0,audioContext.currentTime,.08);
  $('sound-toggle').textContent=soundEnabled?'SOUND ON':'SOUND OFF';
  $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled));
+}
+function unlockGameAudio(){
+ if(!setupGameAudio())return;
+ if(audioContext.state!=='running')audioContext.resume().then(()=>setGameAudioEnabled(true)).catch(()=>{});
+ else if(!soundEnabled)setGameAudioEnabled(true);
+}
+async function toggleGameAudio(){
+ if(!setupGameAudio())return;
+ try{if(audioContext.state!=='running')await audioContext.resume();}catch{return;}
+ setGameAudioEnabled(!soundEnabled);
  showToast(soundEnabled?'Desert ambience enabled.':'Sound muted.');
 }
 $('sound-toggle').addEventListener('click',toggleGameAudio);
+renderer.domElement.addEventListener('pointerdown',unlockGameAudio,{passive:true});
+$('mobile-forward').addEventListener('pointerdown',unlockGameAudio,{passive:true});
+$('mobile-left').addEventListener('pointerdown',unlockGameAudio,{passive:true});
+$('mobile-back').addEventListener('pointerdown',unlockGameAudio,{passive:true});
+$('mobile-right').addEventListener('pointerdown',unlockGameAudio,{passive:true});
 function playFootstep(){
  if(!soundEnabled||!audioContext)return;
  const osc=audioContext.createOscillator(),gain=audioContext.createGain();
@@ -524,6 +576,7 @@ function exitVehicle(){driving=false;driveSpeed=0;player.visible=true;const side
 function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(player.position.distanceTo(playerCar.position)<4.8){enterVehicle();return;}if(active)interact(active);}
 
 window.addEventListener('keydown',e=>{
+ unlockGameAudio();
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  if(e.code==='KeyM'){setMapOpen(!mapOpen);return;}
  if(e.code==='Escape'){if(mapOpen)setMapOpen(false);else closeDialogue();return;}
@@ -571,19 +624,26 @@ function animate(){
    driveSpeed=THREE.MathUtils.clamp(driveSpeed+throttle*15*dt,-10,24);
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
-   if(Math.abs(driveSpeed)>.25)playerCar.rotation.y+=steering*1.45*dt*(driveSpeed>=0?1:-1);
+   if(Math.abs(driveSpeed)>.25)playerCar.rotation.y-=steering*1.45*dt*(driveSpeed>=0?1:-1);
+   const oldPosition=playerCar.position.clone();
    const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
-   const next=playerCar.position.clone().addScaledVector(heading,driveSpeed*dt);
-   const solid=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7],[-145,-76,28.5,7.5],[19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[98,23,2,3.6]];
-   const blocked=(x,z)=>solid.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.8&&Math.abs(z-oz)<rz+1.8);
-   const oldX=playerCar.position.x,oldZ=playerCar.position.z;
-   const trafficHit=trafficCars.some(t=>Math.hypot(next.x-t.root.position.x,next.z-t.root.position.z)<3.2);
-   const pedestrianHit=pedestrianActors.some(n=>Math.hypot(next.x-n.root.position.x,next.z-n.root.position.z)<2.35);
-   if(trafficHit||pedestrianHit){driveSpeed*=-.22;if(crashCooldown<=0){damagePlayer(8,pedestrianHit?'A pedestrian collision.':'A traffic collision.');heat=Math.min(100,heat+(pedestrianHit?5:2));updateHUD();crashCooldown=1.4;}}
-   else{
-    if(!blocked(next.x,oldZ))playerCar.position.x=next.x;
-    if(!blocked(playerCar.position.x,next.z))playerCar.position.z=next.z;
-    if(playerCar.position.x!==next.x||playerCar.position.z!==next.z)driveSpeed*=.18;
+   const next=oldPosition.clone().addScaledVector(heading,driveSpeed*dt);
+   const travel=oldPosition.distanceTo(next),steps=Math.max(1,Math.ceil(travel/.32));
+   let collision='';
+   for(let step=1;step<=steps;step++){
+    const candidate=oldPosition.clone().lerp(next,step/steps);
+    collision=vehicleCollisionAt(candidate,playerCar.rotation.y);
+    if(collision)break;
+    playerCar.position.copy(candidate);
+   }
+   if(collision){
+    driveSpeed*=-.12;
+    if(crashCooldown<=0){
+     const pedestrian=collision==='pedestrian';
+     damagePlayer(pedestrian?8:4,pedestrian?'A pedestrian is in the way.':'Vehicle collision: '+collision+'.');
+     if(pedestrian)heat=Math.min(100,heat+5);
+     updateHUD();crashCooldown=1.4;
+    }
    }
    playerCar.position.x=THREE.MathUtils.clamp(playerCar.position.x,-245,245);playerCar.position.z=THREE.MathUtils.clamp(playerCar.position.z,-235,235);
    player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
