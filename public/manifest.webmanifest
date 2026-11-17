@@ -4,7 +4,7 @@
   "description": "A playable 3D story-driven city sandbox.",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "display_override": [
     "fullscreen",
     "standalone"
@@ -19,5 +19,8 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }
