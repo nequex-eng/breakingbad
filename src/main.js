@@ -154,9 +154,10 @@ const head=new THREE.Mesh(new THREE.SphereGeometry(.34,12,10),mat(0xb98e6e));
 head.position.y=2.12; head.castShadow=true; body.add(head);
 const hair=new THREE.Mesh(new THREE.SphereGeometry(.35,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);
 hair.position.y=2.27; body.add(hair);
+const playerArms=[],playerLegs=[];
 for(const side of [-1,1]){
- const arm=cylinder(body,side*.48,1.3,0,.13,.16,.82,materials.blue,8); arm.rotation.z=side*.12;
- const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,materials.dark,8);
+ const arm=cylinder(body,side*.48,1.3,0,.13,.16,.82,materials.blue,8); arm.rotation.z=side*.12;playerArms.push(arm);
+ const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,materials.dark,8);playerLegs.push(leg);
 }
 player.position.set(0,0,0);
 
@@ -165,8 +166,9 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
  const torso=new THREE.Mesh(new THREE.CylinderGeometry(.34,.43,1.05,9),mat(shirt));torso.position.y=1.35;torso.castShadow=true;root.add(torso);
  const head=new THREE.Mesh(new THREE.SphereGeometry(.31,12,10),mat(skin));head.position.y=2.12;head.castShadow=true;root.add(head);
  const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);hairCap.position.y=2.27;root.add(hairCap);
- for(const side of [-1,1]){const arm=cylinder(root,side*.43,1.35,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;cylinder(root,side*.19,.43,0,.15,.18,.75,mat(pants),8);}
- return {root,phase:Math.random()*6};
+ const arms=[],legs=[];
+ for(const side of [-1,1]){const arm=cylinder(root,side*.43,1.35,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;arms.push(arm);legs.push(cylinder(root,side*.19,.43,0,.15,.18,.75,mat(pants),8));}
+ return {root,phase:Math.random()*6,arms,legs};
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
@@ -190,6 +192,13 @@ const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false;
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,updatedAt:Date.now()}));}catch{}}
+function currentObjective(){return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:null;}
+const objectiveBeacon=new THREE.Group();
+const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
+beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
+const beaconArrow=new THREE.Mesh(new THREE.ConeGeometry(.42,1.15,8),new THREE.MeshBasicMaterial({color:0xe1c477}));
+beaconArrow.position.y=-1.15;beaconArrow.rotation.x=Math.PI;objectiveBeacon.add(beaconArrow);scene.add(objectiveBeacon);
+function updateObjectiveBeacon(time){const target=currentObjective();objectiveBeacon.visible=!!target;if(target){objectiveBeacon.position.set(target.pos.x,7.8+Math.sin(time*.002)*.3,target.pos.z);objectiveBeacon.rotation.y=time*.00045;}}
 function updateHealthUI(){ /* Health remains a gameplay mechanic; visual health bars are intentionally removed. */ }
 function damagePlayer(amount,reason='You were hurt.'){
  health=Math.max(0,health-amount);updateHealthUI();saveGame();showToast(reason+' Health -'+amount+'.');
@@ -282,6 +291,8 @@ function drawMiniMap(){
  ctx.strokeStyle='rgba(213,196,153,.32)';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
  ctx.strokeStyle='rgba(213,196,153,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,h);ctx.stroke();
  for(const l of locations){const dx=(l.pos.x-player.position.x)*scale,dy=(l.pos.z-player.position.z)*scale;if(Math.abs(dx)>cx-9||Math.abs(dy)>cy-9)continue;ctx.fillStyle=l.type==='warehouse'?'#c58c64':l.type==='gas'?'#83b7c1':'#d4b978';ctx.beginPath();ctx.arc(cx+dx,cy+dy,5,0,Math.PI*2);ctx.fill();}
+ const target=currentObjective();if(target){const tx=cx+(target.pos.x-player.position.x)*scale,ty=cy+(target.pos.z-player.position.z)*scale;if(tx>4&&tx<w-4&&ty>4&&ty<h-4){ctx.strokeStyle='#fff0b2';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(tx,ty,9,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}}
+ const carX=cx+(playerCar.position.x-player.position.x)*scale,carY=cy+(playerCar.position.z-player.position.z)*scale;if(carX>4&&carX<w-4&&carY>4&&carY<h-4){ctx.save();ctx.translate(carX,carY);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#8fc4d2';ctx.fillRect(-3,-6,6,12);ctx.restore();}
  ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
 }
 function enterVehicle(){driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
@@ -320,6 +331,7 @@ const clock=new THREE.Clock();
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
+ let walkingNow=false;
  if(!dialogOpen){
   if(driving){
    const throttle=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
@@ -353,14 +365,18 @@ function animate(){
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ))player.position.x=next.x;
    if(!isBlocked(player.position.x,next.z))player.position.z=next.z;
-   if(player.position.x!==oldX||player.position.z!==oldZ)player.rotation.y=Math.atan2(move.x,move.z);
+   if(player.position.x!==oldX||player.position.z!==oldZ){player.rotation.y=Math.atan2(move.x,move.z);walkingNow=true;}
   }
   player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
   }
  }
  updateActive();
- jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;warehouseNPC.root.position.y=Math.sin(performance.now()*.0011+warehouseNPC.phase)*.02;ambientNPCs.forEach((npc,i)=>{npc.root.position.y=Math.sin(performance.now()*.0009+npc.phase)*.018;npc.root.rotation.y+=Math.sin(performance.now()*.00025+i)*.00015;});
+ const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
+ playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
+ const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
+ animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);ambientNPCs.forEach((npc,i)=>{animateNpc(npc);npc.root.rotation.y+=Math.sin(animTime*.00025+i)*.00015;});
+ updateObjectiveBeacon(animTime);
  const camDist=driving?15:10.5;
  const cameraYaw=driving?playerCar.rotation.y:yaw;
  const offset=driving?new THREE.Vector3(-Math.sin(cameraYaw)*camDist,5.2,-Math.cos(cameraYaw)*camDist):new THREE.Vector3(Math.sin(cameraYaw)*camDist,4.5+pitch*5,Math.cos(cameraYaw)*camDist);
