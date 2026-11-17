@@ -229,12 +229,12 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22),worldLabel('POLICE PATROL',96,30,'#9bb9d9')];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[];
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,localsTalked,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,localsTalked,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
-function currentObjective(){return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:null;}
+function currentObjective(){if(customWaypoint)return {name:'CUSTOM WAYPOINT',pos:customWaypoint};return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:null;}
 const objectiveBeacon=new THREE.Group();
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
 beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
@@ -432,6 +432,13 @@ function drawWorldMap(){
 }
 function setMapOpen(open){mapOpen=!!open;$('map-overlay').classList.toggle('hidden',!mapOpen);if(mapOpen)drawWorldMap();}
 $('minimap').addEventListener('click',()=>setMapOpen(true));
+$('world-map').addEventListener('click',e=>{
+ const canvas=$('world-map'),rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
+ const scale=Math.min((canvas.width-90)/520,(canvas.height-70)/520),x=(px-canvas.width/2)/scale,z=(py-canvas.height/2)/scale;
+ if(x< -245||x>245||z< -245||z>245){showToast('Choose a point inside the city map.');return;}
+ customWaypoint=new THREE.Vector3(x,0,z);saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint set.');
+});
+$('waypoint-clear').onclick=()=>{customWaypoint=null;saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
 $('map-close').onclick=()=>setMapOpen(false);
 function enterVehicle(){driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
 function exitVehicle(){driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y+Math.PI;showToast('You stepped out of the vehicle.');updateActive();}
