@@ -123,6 +123,10 @@ box(diner,0,.12,13,27,.2,7,materials.asphalt);
 
 // A warehouse in the distance
 const warehouse=new THREE.Group(); warehouse.position.set(100,0,-70); scene.add(warehouse);
+const school=new THREE.Group(); school.position.set(-132,0,-48); scene.add(school);
+box(school,0,3.1,0,34,6.2,20,materials.cream);box(school,0,6.25,0,35,.35,21,materials.rust);
+for(let x=-12;x<=12;x+=6)box(school,x,3.3,10.15,3.1,2.2,.16,materials.glass);
+box(school,0,1.25,10.25,2.1,2.5,.18,materials.teal);box(school,0,.12,16,38,.2,9,materials.asphalt);
 box(warehouse,0,5,0,38,10,30,materials.dark);
 for(let x of [-12,0,12]) box(warehouse,x,4.2,15.1,8,7,.3,materials.rust);
 box(warehouse,0,10.2,0,39,.4,31,materials.rust);
@@ -154,8 +158,11 @@ for(const side of [-1,1]){
 player.position.set(0,0,0);
 
 const locations=[
- {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:12,type:'mission'},
- {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,17),range:15,type:'talk'},
+ {name:'WHITE HOME',label:'TALK TO SKYLER',pos:new THREE.Vector3(-30,0,-25),range:8,type:'skyler'},
+ {name:'WALTER JR.',label:'TALK TO WALTER JR.',pos:new THREE.Vector3(-35,0,-25),range:8,type:'junior'},
+ {name:'SCHOOL',label:'TALK TO A COLLEAGUE',pos:new THREE.Vector3(-132,0,-30),range:10,type:'teacher'},
+ {name:'A-1 CAR WASH',label:'TALK TO JESSE',pos:new THREE.Vector3(28,0,43),range:9,type:'jesse'},
+ {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,17),range:15,type:'diner'},
  {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-70),range:19,type:'locked'}
 ];
 // Visible original NPCs at key conversation locations.
@@ -176,20 +183,20 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);
 jesseNPC.root.rotation.y=-.35;
-const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);
-dinerNPC.root.rotation.y=Math.PI;
+const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
+const skylerNPC=makeNPC(-30,-25,0x6f7d78,0x343a43,0xc99b7a);skylerNPC.root.rotation.y=Math.PI;
+const juniorNPC=makeNPC(-35,-25,0x667d9a,0x343a43,0xc99b7a);juniorNPC.root.rotation.y=Math.PI;
+const teacherNPC=makeNPC(-132,-30,0x8c6c56,0x343a43);teacherNPC.root.rotation.y=Math.PI;
 
 // Persistent progress: choices and money survive refreshes on this device.
 const SAVE_KEY='abq-stories-save-v1';
 let saved={};
 try { saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{}; } catch {}
-let active=null, cash=Number.isFinite(saved.cash)?saved.cash:7300,
- trust=Number.isFinite(saved.trust)?saved.trust:50,
- heat=Number.isFinite(saved.heat)?saved.heat:8,
- missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0, dialogOpen=false;
-function saveGame(){
- try { localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,missionStep,updatedAt:Date.now()})); } catch {}
-}
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false;
+const defaults={skyler:{trust:58,suspicion:12,fear:0},junior:{trust:76,suspicion:3,fear:0},jesse:{trust:28,suspicion:18,fear:0},teacher:{trust:52,suspicion:4,fear:0},diner:{trust:50,suspicion:5,fear:0}};
+const people={};for(const [id,base] of Object.entries(defaults)){const old=saved.people?.[id]||{};people[id]={...base,...old,knowledge:Array.isArray(old.knowledge)?old.knowledge:[],memories:Array.isArray(old.memories)?old.memories:[]};}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,missionStep,people,updatedAt:Date.now()}));}catch{}}
+function affect(id,delta={},memory='',knowledge=''){const p=people[id];if(!p)return;for(const k of ['trust','suspicion','fear'])if(Number.isFinite(delta[k]))p[k]=THREE.MathUtils.clamp(p[k]+delta[k],0,100);if(knowledge&&!p.knowledge.includes(knowledge))p.knowledge.push(knowledge);if(memory){p.memories.push({text:memory,at:Date.now()});p.memories=p.memories.slice(-12);}saveGame();updateHUD();}
 
 const keys={};
 let yaw=0, pitch=.25, dragging=false, lastX=0,lastY=0;
@@ -201,9 +208,9 @@ function showToast(text){
 }
 function updateHUD(){
  $('cash').textContent='$'+cash.toLocaleString('en-US');
- const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
- $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
- $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+ const stats=$('stats'); if(stats) stats.textContent='SKYLER '+people.skyler.trust+' · JESSE '+people.jesse.trust+' · HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A LIFE THAT LOOKS NORMAL':missionStep===1?'A CONVERSATION WITH JESSE':'TWO LIVES, ONE MAN';
+ $('mission-copy').textContent=missionStep===0?'Go home or visit school. The people closest to Walter notice when he changes.':missionStep===1?'Find Jesse at the car wash. He remembers Walter as his chemistry teacher.':'There is no quest marker for every problem. Talk, listen, and decide what Walter hides.';
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
@@ -218,20 +225,25 @@ function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');
 $('close-dialogue').onclick=closeDialogue;
 
 function interact(target){
- if(!target) return;
- if(target.type==='mission'&&missionStep===0){
-  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
-   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
-   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
-  ]);
- } else if(target.type==='talk'){
-  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
-   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
-   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
-  ]);
- } else {
-  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
- }
+ if(!target)return;
+ if(target.type==='skyler')openDialogue('SKYLER WHITE',people.skyler.suspicion>35?"You keep saying everything is fine. You expect me not to notice?":"You have been somewhere else lately, Walt. If something is wrong, tell me.",[
+ {label:'Tell her the truth about the diagnosis',run:()=>{affect('skyler',{trust:12,suspicion:-8},'Walter told Skyler about the cancer diagnosis.','Walter has cancer.');missionStep=Math.max(missionStep,1);showToast('Skyler knows about the diagnosis, not everything.');}},
+ {label:'Say it is only work stress',run:()=>{affect('skyler',{trust:-5,suspicion:8},'Walter blamed his distance on work.');showToast('She notices the evasion.');}},
+ {label:'Shut down the conversation',run:()=>{affect('skyler',{trust:-9,suspicion:13},'Walter refused to explain.');showToast('The silence creates distance.');}}]);
+ else if(target.type==='junior')openDialogue('WALTER JR.',people.junior.memories.length?'You said you would be honest with us. Are you feeling better?':'Hey, Dad. Mom says you have been tired. Are you okay?',[
+ {label:'Spend a moment with him',run:()=>{affect('junior',{trust:8,suspicion:-2},'Walter spent time with his son.');showToast('A small moment of normal life.');}},
+ {label:'Tell him not to worry',run:()=>{affect('junior',{trust:1,suspicion:2},'Walter reassured his son without explaining.');showToast('He wants to believe you.');}}]);
+ else if(target.type==='teacher')openDialogue('SCHOOL COLLEAGUE','You have been distracted in class, Walt. Everything all right?',[
+ {label:'Keep it professional',run:()=>{affect('teacher',{trust:3},'Walter kept the conversation professional.');showToast('A normal day at school.');}},
+ {label:'Admit something is wrong',run:()=>{affect('teacher',{trust:6,suspicion:1},'Walter admitted a personal problem.','Walter has a serious personal problem.');showToast('Your colleague knows something is wrong, not what.');}}]);
+ else if(target.type==='jesse')openDialogue('JESSE PINKMAN',people.jesse.trust<25?'Mr. White? You show up after all this time and expect me to trust you?':'My old chemistry teacher. This is weird. What do you want?',[
+ {label:'Ask him to hear you out',run:()=>{affect('jesse',{trust:10,suspicion:3},'Walter asked Jesse to hear a proposal.','Walter approached Jesse with a proposal.');missionStep=Math.max(missionStep,2);showToast('Jesse agrees to hear you out — cautiously.');}},
+ {label:'Offer him money to listen',run:()=>{cash=Math.max(0,cash-300);affect('jesse',{trust:2,suspicion:7},'Walter offered Jesse $300.');showToast('Money got his attention, not his trust.');}},
+ {label:'Remind him you were his teacher',run:()=>{affect('jesse',{trust:-4,suspicion:6},'Walter invoked his authority as Jesse’s former teacher.');showToast('Jesse dislikes being talked down to.');}}]);
+ else if(target.type==='diner')openDialogue('DINER REGULAR',people.diner.memories.length?'People are talking about strange things happening around town.':'Morning. Same coffee?',[
+ {label:'Make ordinary conversation',run:()=>{affect('diner',{trust:4,suspicion:-1},'Walter shared ordinary conversation.');showToast('For a moment, life feels ordinary.');}},
+ {label:'Ask what people are saying',run:()=>{affect('diner',{trust:-1,suspicion:4},'Walter pressed for local rumors.');heat++;showToast('Your questions stood out.');}}]);
+ else openDialogue('DESERT WAREHOUSE','The warehouse is quiet. Walter has no reason to go inside yet.',[{label:'Leave',run:()=>{}}]);
 }
 function updateActive(){
  active=null; let best=Infinity;
@@ -243,9 +255,11 @@ function updateActive(){
  if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
  else el.classList.remove('visible');
  let zone='RESIDENTIAL DISTRICT';
- if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
- if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
- if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='WHITE RESIDENCE';
+ if(player.position.distanceTo(locations[2].pos)<40) zone='SCHOOL DISTRICT';
+ if(player.position.distanceTo(locations[3].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[4].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[5].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
  $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
 }
 function onInteract(){if(!dialogOpen&&active)interact(active);}
@@ -295,7 +309,7 @@ function animate(){
    const blocked=[
     [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
     [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
-    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[-132,-48,18,11]
    ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
    if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
   }
@@ -305,6 +319,7 @@ function animate(){
  updateActive();
  jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
  dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ skylerNPC.root.position.y=Math.sin(performance.now()*.0009+skylerNPC.phase)*.012;juniorNPC.root.position.y=Math.sin(performance.now()*.0011+juniorNPC.phase)*.015;teacherNPC.root.position.y=Math.sin(performance.now()*.001+teacherNPC.phase)*.012;
  const camDist=10.5;
  const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
