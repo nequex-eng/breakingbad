@@ -354,6 +354,7 @@ function animate(){
   }
   player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+  }
  }
  updateActive();
  jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;warehouseNPC.root.position.y=Math.sin(performance.now()*.0011+warehouseNPC.phase)*.02;ambientNPCs.forEach((npc,i)=>{npc.root.position.y=Math.sin(performance.now()*.0009+npc.phase)*.018;npc.root.rotation.y+=Math.sin(performance.now()*.00025+i)*.00015;});
