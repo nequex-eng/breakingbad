@@ -154,10 +154,30 @@ for(const side of [-1,1]){
 player.position.set(0,0,0);
 
 const locations=[
- {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,28),range:14,type:'mission'},
- {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,7),range:15,type:'talk'},
+ {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:12,type:'mission'},
+ {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,17),range:15,type:'talk'},
  {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-70),range:19,type:'locked'}
 ];
+// Visible original NPCs at key conversation locations.
+function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
+ const root=new THREE.Group(); root.position.set(x,0,z); scene.add(root);
+ const torso=new THREE.Mesh(new THREE.CylinderGeometry(.34,.43,1.05,9),mat(shirt));
+ torso.position.y=1.35; torso.castShadow=true; root.add(torso);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.31,12,10),mat(skin));
+ head.position.y=2.12; head.castShadow=true; root.add(head);
+ const hairCap=new THREE.Mesh(new THREE.SphereGeometry(.32,10,8,0,Math.PI*2,0,Math.PI/2),materials.dark);
+ hairCap.position.y=2.27; root.add(hairCap);
+ for(const side of [-1,1]){
+  const arm=cylinder(root,side*.43,1.35,0,.13,.16,.78,mat(shirt),8);
+  arm.rotation.z=side*.12;
+  cylinder(root,side*.19,.43,0,.15,.18,.75,mat(pants),8);
+ }
+ return {root,phase:Math.random()*6};
+}
+const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);
+jesseNPC.root.rotation.y=-.35;
+const dinerNPC=makeNPC(-82,17,0x8b6555,0x343a43);
+dinerNPC.root.rotation.y=Math.PI;
 
 // Persistent progress: choices and money survive refreshes on this device.
 const SAVE_KEY='abq-stories-save-v1';
@@ -180,7 +200,8 @@ function showToast(text){
  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>$('toast').classList.remove('show'),2600);
 }
 function updateHUD(){
- $('cash').textContent='
+ $('cash').textContent='$'+cash.toLocaleString('en-US');
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
  $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
  $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
 }
@@ -281,6 +302,8 @@ function animate(){
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
  }
  updateActive();
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
+ dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
  const camDist=10.5;
  const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
