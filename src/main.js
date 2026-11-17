@@ -158,7 +158,19 @@ const locations=[
  {name:'DINER',label:'THE DINER',pos:new THREE.Vector3(-82,0,7),range:15,type:'talk'},
  {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-70),range:19,type:'locked'}
 ];
-let active=null, cash=7300, trust=50, heat=8, missionStep=0, dialogOpen=false;
+
+// Persistent progress: choices and money survive refreshes on this device.
+const SAVE_KEY='abq-stories-save-v1';
+let saved={};
+try { saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{}; } catch {}
+let active=null, cash=Number.isFinite(saved.cash)?saved.cash:7300,
+ trust=Number.isFinite(saved.trust)?saved.trust:50,
+ heat=Number.isFinite(saved.heat)?saved.heat:8,
+ missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0, dialogOpen=false;
+function saveGame(){
+ try { localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,missionStep,updatedAt:Date.now()})); } catch {}
+}
+
 const keys={};
 let yaw=0, pitch=.25, dragging=false, lastX=0,lastY=0;
 const cameraTarget=new THREE.Vector3();
@@ -181,20 +193,20 @@ function openDialogue(speaker,text,choices){
  });
  $('dialogue').classList.remove('hidden');
 }
-function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
 $('close-dialogue').onclick=closeDialogue;
 
 function interact(target){
  if(!target) return;
  if(target.type==='mission'&&missionStep===0){
   openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
-   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');updateHUD();}},
-   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');}}
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
   ]);
  } else if(target.type==='talk'){
   openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
-   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;}},
-   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');}}
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
   ]);
  } else {
   openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
@@ -254,7 +266,17 @@ function animate(){
   const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
   const right=new THREE.Vector3(direction.z,0,-direction.x);
   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
-  if(move.lengthSq()>0){move.normalize();player.position.addScaledVector(move,speed);player.rotation.y=Math.atan2(move.x,move.z);}
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
   player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
   player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
  }
@@ -267,5 +289,5 @@ function animate(){
  camera.lookAt(cameraTarget);
  renderer.render(scene,camera);
 }
-updateHUD();animate();
+updateHUD();saveGame();animate();
 setTimeout(()=>$('loading').classList.add('gone'),700);
