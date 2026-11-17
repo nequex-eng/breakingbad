@@ -284,8 +284,9 @@ function animate(){
   const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
   const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
   const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
-  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  // W moves away from the camera (the character's forward direction).
+  const direction=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+  const right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
   if(move.lengthSq()>0){
    move.normalize();
