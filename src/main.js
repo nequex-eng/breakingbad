@@ -222,7 +222,1039 @@ function showToast(text){
  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>$('toast').classList.remove('show'),2600);
 }
 function updateHUD(){
- $('cash').textContent='$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('cash').textContent='
+ const fill=$('health-fill'),value=$('health-value');
+ if(fill)fill.style.width=health+'%';
+ if(value)value.textContent=Math.ceil(health)+' / 100';
+ if(playerHealthFill)playerHealthFill.scale.x=Math.max(.001,health/100);
+}
+function damagePlayer(amount,reason='You were hurt.'){
+ health=Math.max(0,health-amount);updateHealthUI();saveGame();
+ showToast(reason+' Health -'+amount+'.');
+ if(health<=0){
+  health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,29);
+  showToast('You recovered at the diner. $300 lost; health restored.');
+  updateHealthUI();saveGame();updateHUD();
+ }
+}
+function healPlayer(amount,cost=0){
+ if(cost>cash){showToast('Not enough cash for treatment.');return false;}
+ cash-=cost;health=Math.min(100,health+amount);updateHealthUI();saveGame();updateHUD();return true;
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',[
+   {label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=Math.max(missionStep,2);showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}},
+   {label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}},
+   {label:'Buy a meal (+60 health, $250)',run:()=>{if(healPlayer(60,250))showToast('You feel much better.');}}
+  ]);
+ } else if(target.type==='gas'){
+  openDialogue('GAS STATION','A quiet stop beside the highway. The attendant offers a first-aid kit and a chance to regroup.',[
+   {label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}},
+   {label:'Refuel and rest (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}}
+  ]);
+ } else if(target.type==='warehouse'){
+  if(missionStep<2){
+   openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
+  } else if(missionStep===2){
+   openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[
+    {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat+=2;cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800');saveGame();updateHUD();}},
+    {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat+=8;missionStep=3;showToast('You got what you came for. +$2,400');saveGame();updateHUD();}}
+   ]);
+  } else {
+   openDialogue('WAREHOUSE CONTACT','The warehouse is secure for now. You have completed the first chapter.',[{label:'Understood',run:()=>{}}]);
+  }
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ if(player.position.distanceTo(locations[3].pos)<35) zone='GAS STATION';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';drawMiniMap();
+}
+function drawMiniMap(){
+ const canvas=$('minimap');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.48;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(13,19,16,.88)';ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle='rgba(213,196,153,.32)';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+ ctx.strokeStyle='rgba(213,196,153,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,h);ctx.stroke();
+ for(const l of locations){
+  const dx=(l.pos.x-player.position.x)*scale,dy=(l.pos.z-player.position.z)*scale;
+  if(Math.abs(dx)>cx-9||Math.abs(dy)>cy-9)continue;
+  ctx.fillStyle=l.type==='warehouse'?'#c58c64':l.type==='gas'?'#83b7c1':'#d4b978';
+  ctx.beginPath();ctx.arc(cx+dx,cy+dy,5,0,Math.PI*2);ctx.fill();
+ }
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
+ dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);playerHealthBar.quaternion.copy(camera.quaternion);landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));renderer.render(scene,camera);
+}
+updateHUD();saveGame();drawMiniMap();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
+  ]);
+ } else {
+  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();saveGame();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');updateHealthUI();
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function updateHealthUI(){
+ const fill=$('health-fill'),value=$('health-value');
+ if(fill)fill.style.width=health+'%';
+ if(value)value.textContent=Math.ceil(health)+' / 100';
+ if(playerHealthFill)playerHealthFill.scale.x=Math.max(.001,health/100);
+}
+function damagePlayer(amount,reason='You were hurt.'){
+ health=Math.max(0,health-amount);updateHealthUI();saveGame();
+ showToast(reason+' Health -'+amount+'.');
+ if(health<=0){
+  health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,29);
+  showToast('You recovered at the diner. $300 lost; health restored.');
+  updateHealthUI();saveGame();updateHUD();
+ }
+}
+function healPlayer(amount,cost=0){
+ if(cost>cash){showToast('Not enough cash for treatment.');return false;}
+ cash-=cost;health=Math.min(100,health+amount);updateHealthUI();saveGame();updateHUD();return true;
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
+  ]);
+ } else {
+  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
+ dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();saveGame();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
+  ]);
+ } else {
+  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();saveGame();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');updateHealthUI();
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function updateHealthUI(){
+ const fill=$('health-fill'),value=$('health-value');
+ if(fill)fill.style.width=health+'%';
+ if(value)value.textContent=Math.ceil(health)+' / 100';
+ if(playerHealthFill)playerHealthFill.scale.x=Math.max(.001,health/100);
+}
+function damagePlayer(amount,reason='You were hurt.'){
+ health=Math.max(0,health-amount);updateHealthUI();saveGame();
+ showToast(reason+' Health -'+amount+'.');
+ if(health<=0){
+  health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,29);
+  showToast('You recovered at the diner. $300 lost; health restored.');
+  updateHealthUI();saveGame();updateHUD();
+ }
+}
+function healPlayer(amount,cost=0){
+ if(cost>cash){showToast('Not enough cash for treatment.');return false;}
+ cash-=cost;health=Math.min(100,health+amount);updateHealthUI();saveGame();updateHUD();return true;
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',[
+   {label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=Math.max(missionStep,2);showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}},
+   {label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}},
+   {label:'Buy a meal (+60 health, $250)',run:()=>{if(healPlayer(60,250))showToast('You feel much better.');}}
+  ]);
+ } else if(target.type==='gas'){
+  openDialogue('GAS STATION','A quiet stop beside the highway. The attendant offers a first-aid kit and a chance to regroup.',[
+   {label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}},
+   {label:'Refuel and rest (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}}
+  ]);
+ } else if(target.type==='warehouse'){
+  if(missionStep<2){
+   openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
+  } else if(missionStep===2){
+   openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[
+    {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat+=2;cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800');saveGame();updateHUD();}},
+    {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat+=8;missionStep=3;showToast('You got what you came for. +$2,400');saveGame();updateHUD();}}
+   ]);
+  } else {
+   openDialogue('WAREHOUSE CONTACT','The warehouse is secure for now. You have completed the first chapter.',[{label:'Understood',run:()=>{}}]);
+  }
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ if(player.position.distanceTo(locations[3].pos)<35) zone='GAS STATION';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';drawMiniMap();
+}
+function drawMiniMap(){
+ const canvas=$('minimap');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.48;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(13,19,16,.88)';ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle='rgba(213,196,153,.32)';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
+ ctx.strokeStyle='rgba(213,196,153,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,h);ctx.stroke();
+ for(const l of locations){
+  const dx=(l.pos.x-player.position.x)*scale,dy=(l.pos.z-player.position.z)*scale;
+  if(Math.abs(dx)>cx-9||Math.abs(dy)>cy-9)continue;
+  ctx.fillStyle=l.type==='warehouse'?'#c58c64':l.type==='gas'?'#83b7c1':'#d4b978';
+  ctx.beginPath();ctx.arc(cx+dx,cy+dy,5,0,Math.PI*2);ctx.fill();
+ }
+ ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
+ dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);playerHealthBar.quaternion.copy(camera.quaternion);landmarkLabels.forEach(label=>label.quaternion.copy(camera.quaternion));renderer.render(scene,camera);
+}
+updateHUD();saveGame();drawMiniMap();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
+  ]);
+ } else {
+  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();saveGame();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');updateHealthUI();
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function updateHealthUI(){
+ const fill=$('health-fill'),value=$('health-value');
+ if(fill)fill.style.width=health+'%';
+ if(value)value.textContent=Math.ceil(health)+' / 100';
+ if(playerHealthFill)playerHealthFill.scale.x=Math.max(.001,health/100);
+}
+function damagePlayer(amount,reason='You were hurt.'){
+ health=Math.max(0,health-amount);updateHealthUI();saveGame();
+ showToast(reason+' Health -'+amount+'.');
+ if(health<=0){
+  health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,29);
+  showToast('You recovered at the diner. $300 lost; health restored.');
+  updateHealthUI();saveGame();updateHUD();
+ }
+}
+function healPlayer(amount,cost=0){
+ if(cost>cash){showToast('Not enough cash for treatment.');return false;}
+ cash-=cost;health=Math.min(100,health+amount);updateHealthUI();saveGame();updateHUD();return true;
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
+  ]);
+ } else {
+  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;
+ dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();saveGame();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');
+ const stats=$('stats'); if(stats) stats.textContent='TRUST '+trust+'  ·  HEAT '+heat;
+ $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
+ $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+}
+function openDialogue(speaker,text,choices){
+ dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
+ const actions=$('dialogue-actions'); actions.innerHTML='';
+ choices.forEach(c=>{
+  const b=document.createElement('button'); b.textContent=c.label;
+  b.onclick=()=>{c.run(); closeDialogue();}; actions.appendChild(b);
+ });
+ $('dialogue').classList.remove('hidden');
+}
+function closeDialogue(){dialogOpen=false;$('dialogue').classList.add('hidden');saveGame();updateHUD();}
+$('close-dialogue').onclick=closeDialogue;
+
+function interact(target){
+ if(!target) return;
+ if(target.type==='mission'&&missionStep===0){
+  openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
+   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
+   {label:'“Forget it. Not today.”',run:()=>{heat+=2;showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
+  ]);
+ } else if(target.type==='talk'){
+  openDialogue('DINER REGULAR','People around here are nervous. There are unmarked cars on the road, and everyone has a theory. What do you want to know?',[
+   {label:'Ask about the neighborhood',run:()=>{showToast('Rumors travel faster than facts. Investigation pressure +1.');heat+=1;saveGame();updateHUD();}},
+   {label:'Keep the conversation friendly',run:()=>{trust=Math.min(100,trust+4);showToast('A little goodwill goes a long way.');saveGame();updateHUD();}}
+  ]);
+ } else {
+  openDialogue('LOCKED LOCATION','You do not have a reason to go in here yet.',[{label:'Understood',run:()=>{}}]);
+ }
+}
+function updateActive(){
+ active=null; let best=Infinity;
+ for(const l of locations){
+  const d=player.position.distanceTo(l.pos);
+  if(d<l.range&&d<best){best=d;active=l;}
+ }
+ const el=$('interaction');
+ if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
+ else el.classList.remove('visible');
+ let zone='RESIDENTIAL DISTRICT';
+ if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
+ if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
+ if(player.position.distanceTo(locations[2].pos)<45) zone='INDUSTRIAL OUTSKIRTS';
+ $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';
+}
+function onInteract(){if(!dialogOpen&&active)interact(active);}
+
+window.addEventListener('keydown',e=>{
+ keys[e.code]=true;
+ if(e.code==='KeyE'||e.code==='Enter') onInteract();
+ if(e.code==='Escape') closeDialogue();
+});
+window.addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;renderer.domElement.setPointerCapture(e.pointerId);});
+renderer.domElement.addEventListener('pointerup',()=>dragging=false);
+renderer.domElement.addEventListener('pointermove',e=>{
+ if(!dragging)return;
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.05,Math.min(.75,pitch+(e.clientY-lastY)*.003));
+ lastX=e.clientX;lastY=e.clientY;
+});
+function bindHold(id,code){
+ const el=$(id); if(!el)return;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();keys[code]=true;});
+ ['pointerup','pointerleave','pointercancel'].forEach(ev=>el.addEventListener(ev,()=>keys[code]=false));
+}
+bindHold('mobile-forward','KeyW');bindHold('mobile-left','KeyA');bindHold('mobile-back','KeyS');bindHold('mobile-right','KeyD');
+$('mobile-interact').onclick=onInteract;
+
+function resize(){
+ camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+}
+window.addEventListener('resize',resize);
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ if(!dialogOpen){
+  const forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(direction.z,0,-direction.x);
+  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(move.lengthSq()>0){
+   move.normalize();
+   const next=player.position.clone().addScaledVector(move,speed);
+   // Keep the player outside solid building footprints; entrances remain open.
+   const blocked=[
+    [-30,-38,8.2,6.5],[-58,-38,7.5,6], [8,-44,7.5,6],
+    [42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+    [36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16]
+   ].some(([x,z,rx,rz])=>Math.abs(next.x-x)<rx && Math.abs(next.z-z)<rz);
+   if(!blocked){player.position.copy(next);player.rotation.y=Math.atan2(move.x,move.z);}
+  }
+  player.position.x=THREE.MathUtils.clamp(player.position.x,-245,245);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-235,235);
+ }
+ updateActive();
+ const camDist=10.5;
+ const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
+ const desired=cameraTarget.clone().add(offset);
+ camera.position.lerp(desired,1-Math.pow(.001,dt));
+ camera.lookAt(cameraTarget);
+ renderer.render(scene,camera);
+}
+updateHUD();saveGame();animate();
+setTimeout(()=>$('loading').classList.add('gone'),700);
++cash.toLocaleString('en-US');
+ updateHealthUI();
  $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
  $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
 }
