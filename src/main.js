@@ -230,7 +230,7 @@ function vehicleOverlapsPedestrian(position,rotation,npc){
  const dx=npc.root.position.x-position.x,dz=npc.root.position.z-position.z;
  if(dx*dx+dz*dz>36)return false;
  const c=Math.cos(rotation),s=Math.sin(rotation);
- const localX=dx*c+dz*s,localZ=-dx*s+dz*c;
+ const localX=dx*c-dz*s,localZ=dx*s+dz*c;
  const nearestX=THREE.MathUtils.clamp(localX,-1.48,1.48),nearestZ=THREE.MathUtils.clamp(localZ,-2.72,2.72);
  const side=localX-nearestX,front=localZ-nearestZ;
  return side*side+front*front<.82*.82;
@@ -249,10 +249,10 @@ function separatePedestriansFromAllVehicles(){
    const lx=dx*c+dz*s,lz=-dx*s+dz*c;
    const px=THREE.MathUtils.clamp(lx,-1.48,1.48),pz=THREE.MathUtils.clamp(lz,-2.72,2.72);
    let nx=lx-px,nz=lz-pz,len=Math.hypot(nx,nz);
-   if(len<.001){nx=lx/Math.max(.001,Math.hypot(lx,lz));nz=lz/Math.max(.001,Math.hypot(lx,lz));len=1;}
+   if(len<.001){nx=1;nz=0;len=1;}
    const push=.86/len,outX=lx+nx*push,outZ=lz+nz*push;
-   npc.root.position.x=vehicle.position.x+outX*c-outZ*s;
-   npc.root.position.z=vehicle.position.z+outX*s+outZ*c;
+   npc.root.position.x=vehicle.position.x+outX*c+outZ*s;
+   npc.root.position.z=vehicle.position.z-outX*s+outZ*c;
   }
  }
 }
