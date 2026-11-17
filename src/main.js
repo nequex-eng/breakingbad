@@ -162,7 +162,7 @@ const economyPoints=[
  {kind:'supply',name:'SEALED CACHE A',label:'COLLECT SEALED A',pos:new THREE.Vector3(76,0,72),resource:'A'},
  {kind:'supply',name:'SEALED CACHE B',label:'COLLECT SEALED B',pos:new THREE.Vector3(116,0,35),resource:'B'},
  {kind:'supply',name:'SEALED CACHE C',label:'COLLECT SEALED C',pos:new THREE.Vector3(145,0,-12),resource:'C'},
- {kind:'lab',name:'WORKSHOP',label:'MAKE A BATCH',pos:new THREE.Vector3(100,0,-47)},
+ {kind:'lab',name:'WORKSHOP',label:'COOK A CRYSTAL BATCH',pos:new THREE.Vector3(100,0,-47)},
  {kind:'buyer',name:'BACK-ALLEY CONTACT',label:'SELL FINISHED BATCH',pos:new THREE.Vector3(-66,0,28)}
 ];
 for(const p of economyPoints){
@@ -211,7 +211,7 @@ const inventory={A:0,B:0,C:0,batches:0,collected:[],...(saved.inventory||{})};
 if(saved.chosenCharacter)chosenCharacter=saved.chosenCharacter;
 function updateLoopHUD(){
  $('inventory-line').textContent='SEALED A '+inventory.A+' · B '+inventory.B+' · C '+inventory.C;
- $('batch-line').textContent='FINISHED BATCHES '+inventory.batches;
+ $('batch-line').textContent='CRYSTAL BATCHES '+inventory.batches;
  $('player-role').textContent=chosenCharacter==='walter'?'HEISENBERG':'JESSE PINKMAN';
  $('loop-hint').textContent=inventory.batches>0?'A buyer is waiting. Take a batch to the contact.':'Collect sealed A, B and C supplies, then visit the workshop.';
  for(const p of economyPoints){if(p.kind==='supply'&&inventory.collected.includes(p.resource)){p.collected=true;p.label='CACHE EMPTY';p.visual.material.color.setHex(0x596052);p.visual.material.emissive.setHex(0x101510);}}
@@ -272,13 +272,15 @@ function interact(target){
   if(inventory.A<1||inventory.B<1||inventory.C<1){showToast('Workshop requires one sealed unit each of A, B and C.');return;}
   inventory.A--;inventory.B--;inventory.C--;inventory.batches++;
   inventory.lastQuality=chosenCharacter==='walter'?88+Math.floor(Math.random()*11):62+Math.floor(Math.random()*24);
-  showToast('Batch completed. Quality rating: '+inventory.lastQuality+'.');updateLoopHUD();saveGame();return;
+  showToast('Crystal batch completed. Quality rating: '+inventory.lastQuality+'.');updateLoopHUD();saveGame();return;
  }
  if(target.kind==='buyer'){
-  if(inventory.batches<1){showToast('No finished batches to sell.');return;}
+  if(inventory.batches<1){showToast('No finished crystal batches to sell.');return;}
   const quality=inventory.lastQuality||70,payout=Math.round(450+quality*12+(chosenCharacter==='jesse'?120:0));
   inventory.batches--;cash+=payout;heat=Math.min(100,heat+(chosenCharacter==='jesse'?4:6));
-  showToast('Deal complete. +
+  showToast('Deal complete. Payment received. Heat increased.');
+  updateLoopHUD();saveGame();updateHUD();return;
+ }
  if(target.type==='skyler')openDialogue('SKYLER WHITE',people.skyler.suspicion>35?"You keep saying everything is fine. You expect me not to notice?":"You have been somewhere else lately, Walt. If something is wrong, tell me.",[
  {label:'Tell her the truth about the diagnosis',run:()=>{affect('skyler',{trust:12,suspicion:-8},'Walter told Skyler about the cancer diagnosis.','Walter has cancer.');missionStep=Math.max(missionStep,1);showToast('Skyler knows about the diagnosis, not everything.');}},
  {label:'Say it is only work stress',run:()=>{affect('skyler',{trust:-5,suspicion:8},'Walter blamed his distance on work.');showToast('She notices the evasion.');}},
@@ -296,7 +298,7 @@ function interact(target){
  else if(target.type==='diner')openDialogue('DINER REGULAR',people.diner.memories.length?'People are talking about strange things happening around town.':'Morning. Same coffee?',[
  {label:'Make ordinary conversation',run:()=>{affect('diner',{trust:4,suspicion:-1},'Walter shared ordinary conversation.');showToast('For a moment, life feels ordinary.');}},
  {label:'Ask what people are saying',run:()=>{affect('diner',{trust:-1,suspicion:4},'Walter pressed for local rumors.');heat++;showToast('Your questions stood out.');}}]);
- else openDialogue('DESERT WAREHOUSE','The warehouse is quiet. Walter has no reason to go inside yet.',[{label:'Leave',run:()=>{}}]);
+ else openDialogue('DESERT WAREHOUSE','The warehouse is quiet.',[{label:'Leave',run:()=>{}}]);
 }
 function updateActive(){
  active=null; let best=Infinity;
