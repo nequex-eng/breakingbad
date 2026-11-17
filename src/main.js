@@ -35,10 +35,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb9a18a);
 scene.fog = new THREE.FogExp2(0xb9a18a, 0.0068);
 
-const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 650);
+const camera = new THREE.PerspectiveCamera(58, (window.visualViewport?.width||innerWidth) / (window.visualViewport?.height||innerHeight), 0.1, 650);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.65));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(window.visualViewport?.width||innerWidth, window.visualViewport?.height||innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -227,14 +227,15 @@ function vehicleOverlapsBox(position,b){
  return dx*dx+dz*dz<VEHICLE_COLLISION_RADIUS*VEHICLE_COLLISION_RADIUS;
 }
 function vehicleOverlapsPedestrian(position,rotation,npc){
+ // Expanded sedan envelope plus a ground-level pedestrian capsule.
  const dx=npc.root.position.x-position.x,dz=npc.root.position.z-position.z;
- const rightX=Math.cos(rotation),rightZ=-Math.sin(rotation);
- const forwardX=Math.sin(rotation),forwardZ=Math.cos(rotation);
- const localX=dx*rightX+dz*rightZ,localZ=dx*forwardX+dz*forwardZ;
- const nearestX=THREE.MathUtils.clamp(localX,-1.42,1.42);
- const nearestZ=THREE.MathUtils.clamp(localZ,-2.72,2.72);
+ if(dx*dx+dz*dz>20.25)return false;
+ const c=Math.cos(rotation),s=Math.sin(rotation);
+ const localX=dx*c-dz*s,localZ=dx*s+dz*c;
+ const nearestX=THREE.MathUtils.clamp(localX,-1.58,1.58);
+ const nearestZ=THREE.MathUtils.clamp(localZ,-2.88,2.88);
  const side=localX-nearestX,front=localZ-nearestZ;
- return side*side+front*front<.82*.82;
+ return side*side+front*front<1.22*1.22 || dx*dx+dz*dz<2.65*2.65;
 }
 function vehicleCollisionAt(position,rotation){
  if(position.x< -242||position.x>242||position.z< -232||position.z>232)return 'city boundary';
@@ -295,7 +296,11 @@ const gasContactNPC=makeNPC(73,43,0x57445e,0x30323c,0x9d7358);gasContactNPC.root
 const motelNPC=makeNPC(-132,-65,0x6d5a48,0x343a43,0xb58b6b);motelNPC.root.rotation.y=Math.PI;
 const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
 ambientNPCs.forEach((npc,i)=>{npc.home=npc.root.position.clone();npc.wanderPhase=i*2.15;});
-const pedestrianActors=[jesseNPC,dinerNPC,warehouseNPC,policeNPC,gasContactNPC,motelNPC,...ambientNPCs];
+const witnessNPC=makeNPC(-94,29,0x8a7462,0x343a43,0xb98e6e);
+const driverNPC=makeNPC(69,43,0x4f6970,0x303841,0x9b745b);
+const motelClerkNPC=makeNPC(-137,-66,0x70634f,0x343a43,0xb98e6e);
+const warehouseArchivistNPC=makeNPC(108,-51,0x706b58,0x343a43,0x9c775d);
+const pedestrianActors=[jesseNPC,dinerNPC,warehouseNPC,policeNPC,gasContactNPC,motelNPC,...ambientNPCs,witnessNPC,driverNPC,motelClerkNPC,warehouseArchivistNPC];
 
 const locations=[
  {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:13,type:'mission'},
@@ -314,8 +319,8 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,38),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,localsTalked,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
@@ -324,7 +329,11 @@ if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y)){
  if(driving)player.position.copy(playerCar.position);
  showToast('Vehicle repositioned to a safe road after loading.');
 }
-function currentObjective(){if(customWaypoint)return {name:'CUSTOM WAYPOINT',pos:customWaypoint};return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:missionStep===6?locations[1]:missionStep===7?locations[5]:missionStep===8?locations[0]:null;}
+function currentObjective(){
+ if(customWaypoint)return {name:'CUSTOM WAYPOINT',pos:customWaypoint};
+ const objectives={0:locations[0],1:locations[1],2:locations[2],3:locations[1],4:locations[3],5:locations[2],6:locations[1],7:locations[5],8:locations[0],9:locations[0],10:locations[1],11:locations[3],12:locations[5],13:locations[2],14:locations[0],15:locations[0],16:locations[3],17:locations[1],18:locations[2],19:locations[5],20:locations[0]};
+ return objectives[missionStep]||null;
+}
 const objectiveBeacon=new THREE.Group();
 const beaconRing=new THREE.Mesh(new THREE.TorusGeometry(1.35,.12,8,24),new THREE.MeshBasicMaterial({color:0xe1c477}));
 beaconRing.rotation.x=Math.PI/2;objectiveBeacon.add(beaconRing);
@@ -332,12 +341,7 @@ const beaconArrow=new THREE.Mesh(new THREE.ConeGeometry(.42,1.15,8),new THREE.Me
 beaconArrow.position.y=-1.15;beaconArrow.rotation.x=Math.PI;objectiveBeacon.add(beaconArrow);scene.add(objectiveBeacon);
 function updateObjectiveBeacon(time){const target=currentObjective();objectiveBeacon.visible=!!target;if(target){objectiveBeacon.position.set(target.pos.x,7.8+Math.sin(time*.002)*.3,target.pos.z);objectiveBeacon.rotation.y=time*.00045;}}
 function updateObjectiveDistance(){const target=currentObjective();const el=$('objective-distance');if(el)el.textContent=target?'TARGET DISTANCE · '+Math.round(player.position.distanceTo(target.pos))+' M':'FREE ROAM · EXPLORE ALBUQUERQUE';}
-function updateHealthUI(){ /* Health remains a gameplay mechanic; visual health bars are intentionally removed. */ }
-function damagePlayer(amount,reason='You were hurt.'){
- health=Math.max(0,health-amount);updateHealthUI();saveGame();showToast(reason+' Health -'+amount+'.');
- if(health<=0){health=100;cash=Math.max(0,cash-300);player.position.set(-82,0,37);showToast('You recovered at the diner. $300 lost; health restored.');updateHealthUI();saveGame();updateHUD();}
-}
-function healPlayer(amount,cost=0){if(cost>cash){showToast('Not enough cash for treatment.');return false;}cash-=cost;health=Math.min(100,health+amount);updateHealthUI();saveGame();updateHUD();return true;}
+
 const keys={};
 let yaw=Math.PI, pitch=.25, dragging=false, lastX=0,lastY=0;
 const cameraTarget=new THREE.Vector3();
@@ -490,15 +494,13 @@ function showToast(text){
 }
 function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
- updateHealthUI();
- trust=THREE.MathUtils.clamp(trust,0,100);heat=THREE.MathUtils.clamp(heat,0,100);
- $('stats').textContent='TRUST '+Math.round(trust)+' · HEAT '+Math.round(heat)+(heat>=30?' · POLICE ALERT':'');
- const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','CHAPTER THREE COMPLETE'];
- const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','The third chapter is complete. Explore Albuquerque and live with the consequences.'];
- const step=Math.min(missionStep,9);
- $('mission-title').textContent=titles[step];
- $('mission-copy').textContent=copies[step];
- const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','18%','30%','42%','56%','70%','78%','88%','96%','100%'][step];
+ const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','A MESSAGE AFTER MIDNIGHT','THE ROUTE 66 ENVELOPE','BACK TO THE CAR WASH','THE MISSING DRIVER','THE DINER WITNESS','A DRIVER WHO REMEMBERS','ROOM SIX','THE LEDGER','BACK TO JESSE','A NEW ARRANGEMENT','THE NIGHT DELIVERY','THE COURIER','THE WAREHOUSE LIST','THE MOTEL ROOM','THE FINAL HANDOFF','CHAPTER FIVE COMPLETE'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner. Someone there may know more than they are saying.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','A voicemail is waiting at the diner. There is one more loose end to tie up.','A courier left something at the Route 66 Motel. Go collect it.','Return to A-1 Car Wash and decide what Jesse should know.','Jesse has heard from a driver who vanished after a late-night delivery. Start at the car wash.','Find the waitress who saw the delivery van leave the diner.','Track down the driver at the gas station. He knows where the van went.','Go to the Route 66 Motel. Someone kept a room key for the driver.','The room key leads to a ledger hidden at the desert warehouse.','Take the ledger back to Jesse at A-1 Car Wash.','Jesse has another job. A night delivery went missing on the east side.','Find the night driver at the gas station before the police do.','A courier is waiting at the diner with a route and a warning.','The warehouse contact has the shipment list. Get the truth.','Meet the motel manager. The missing cargo was moved through room six.','Return to Jesse. This time, decide what happens to the shipment.','The fifth chapter is complete. Albuquerque is open to explore.'];
+ const step=Math.min(missionStep,titles.length-1);
+ $('mission-title').textContent=titles[step];$('mission-copy').textContent=copies[step];
+ const progress=document.querySelector('.objective-progress i');
+ if(progress)progress.style.width=['5%','10%','15%','20%','25%','30%','35%','40%','45%','50%','55%','60%','65%','70%','75%','80%','84%','88%','92%','96%','99%','100%'][step]||'100%';
+ const chapter=$('chapter');if(chapter)chapter.textContent=missionStep<=8?'CHAPTER 01 · THE FIRST MOVE':missionStep<=14?'CHAPTER 04 · THE MISSING DRIVER':missionStep<=20?'CHAPTER 05 · THE NIGHT DELIVERY':'CHAPTER 05 · COMPLETE';
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
@@ -521,73 +523,51 @@ $('mission-toggle').addEventListener('click',()=>{
 function interact(target){
  if(!target)return;
  if(target.type==='local'){
-  const lines=[
-   ['NEIGHBOR','That black-and-white cruiser keeps turning around near the avenue. Someone has put the cops on edge.'],
-   ['CAR WASH CUSTOMER','I saw a delivery van heading toward the warehouse road before sunrise. Nobody uses that road without a reason.'],
-   ['DESERT COMMUTER','That stranger at the gas station has been waiting for someone. He does not look like he is from around here.']
-  ];
+  const lines=[['NEIGHBOR','That black-and-white cruiser keeps turning around near the avenue. Someone has been asking about a late-night delivery.'],['CAR WASH CUSTOMER','I saw a delivery van heading toward the warehouse road before sunrise. It looked like it was in a hurry.'],['DESERT COMMUTER','The stranger at the gas station was asking about a room at the Route 66 Motel.']];
   const [speaker,line]=lines[target.index]||lines[0];
-  if(localsTalked.includes(target.index))openDialogue(speaker,'I already told you what I know. I need to get going.',[{label:'Let them go',run:()=>{}}]);
-  else openDialogue(speaker,line,[
-   {label:'Listen and thank them (trust +2, heat -2)',run:()=>{localsTalked.push(target.index);trust=Math.min(100,trust+2);heat=Math.max(0,heat-2);showToast('A useful bit of neighborhood information.');saveGame();updateHUD();}},
-   {label:'Leave them alone',run:()=>{}}
-  ]);
+  if(localsTalked.includes(target.index))openDialogue(speaker,'I have told you everything I know. I need to get going.',[{label:'Let them go',run:()=>{}}]);
+  else openDialogue(speaker,line,[{label:'Thank them for the information',run:()=>{localsTalked.push(target.index);showToast('You have a new lead.');saveGame();}},{label:'Leave them alone',run:()=>{}}]);
  }else if(target.type==='mission'){
-  if(missionStep===0)openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
-   {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
-   {label:'“Forget it. Not today.”',run:()=>{heat=Math.min(100,heat+2);showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
-  ]);
-  else if(missionStep===8)openDialogue('JESSE','You came back. Tell me exactly what was in the envelope. And do not leave anything out.',[
-   {label:'Show him the evidence (trust +14, heat +5, +$1,300)',run:()=>{trust=Math.min(100,trust+14);heat=Math.min(100,heat+5);cash+=1300;missionStep=9;showToast('Jesse understands. +$1,300. Chapter three complete.');saveGame();updateHUD();}},
-   {label:'Keep the details to yourself (trust +3, heat -4, +$500)',run:()=>{trust=Math.min(100,trust+3);heat=Math.max(0,heat-4);cash+=500;missionStep=9;showToast('You keep the details quiet. +$500.');saveGame();updateHUD();}}
-  ]);
-  else if(!carWashShiftDone)openDialogue('CAR WASH MANAGER','The afternoon rush is over, but there is still work to do. A short shift would put some cash in your pocket.',[
-   {label:'Work the short shift (+$300, heat -2)',run:()=>{cash+=300;heat=Math.max(0,heat-2);carWashShiftDone=true;showToast('Shift complete. +$300.');saveGame();updateHUD();}},
-   {label:'Ask Jesse how things are going',run:()=>{showToast('Jesse says to keep your head down.');}}
-  ]);
-  else openDialogue('CAR WASH MANAGER','You already worked your shift today. The wash is running smoothly.',[{label:'Leave',run:()=>{}}]);
+  if(missionStep===0)openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[{label:'“I have a plan. Hear me out.”',run:()=>{cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},{label:'“Forget it. Not today.”',run:()=>showToast('Jesse leaves. The moment passes.')}]);
+  else if(missionStep===8)openDialogue('JESSE','You came back. Tell me exactly what was in the envelope. And do not leave anything out.',[{label:'Show him the evidence (+$1,300)',run:()=>{cash+=1300;missionStep=9;showToast('Jesse understands. +$1,300. A new problem is waiting.');saveGame();updateHUD();}},{label:'Keep the details to yourself (+$500)',run:()=>{cash+=500;missionStep=9;showToast('You keep the details quiet. +$500.');saveGame();updateHUD();}}]);
+  else if(missionStep===9)openDialogue('JESSE','A driver disappeared after a late delivery. His van was seen near the diner, then the motel. Find out what happened before somebody else does.',[{label:'“I will find the driver.”',run:()=>{missionStep=10;showToast('Chapter Four: The Missing Driver.');saveGame();updateHUD();}},{label:'Ask for an advance (+$150)',run:()=>{cash+=150;missionStep=10;showToast('Jesse gives you $150 for expenses.');saveGame();updateHUD();}}]);
+  else if(missionStep===14)openDialogue('JESSE','That ledger could ruin a lot of people. We need to decide what it is worth.',[{label:'Split the proceeds (+$2,200)',run:()=>{cash+=2200;missionStep=15;showToast('Chapter Four complete. +$2,200');saveGame();updateHUD();}},{label:'Take the larger share (+$3,200)',run:()=>{cash+=3200;missionStep=15;showToast('You take the larger share. +$3,200');saveGame();updateHUD();}}]);
+  else if(missionStep===15)openDialogue('JESSE','One more job. A night shipment went missing on the east side. The driver, the courier and the warehouse list are all connected. Bring me the truth.',[{label:'Start the night delivery investigation',run:()=>{missionStep=16;showToast('Chapter Five: The Night Delivery.');saveGame();updateHUD();}},{label:'Ask for an advance (+$200)',run:()=>{cash+=200;missionStep=16;showToast('Jesse gives you a $200 advance.');saveGame();updateHUD();}}]);
+  else if(missionStep===20)openDialogue('JESSE','That is the last of it. We can close this quietly, or make one final move and walk away with more.',[{label:'Close the deal (+$3,000)',run:()=>{cash+=3000;missionStep=21;showToast('Chapter Five complete. +$3,000');saveGame();updateHUD();}},{label:'Make the final move (+$4,500)',run:()=>{cash+=4500;missionStep=21;showToast('You take the risk and get paid. +$4,500');saveGame();updateHUD();}}]);
+  else if(missionStep>=21)openDialogue('JESSE','For now, we are done. Keep your eyes open. This town never stays quiet for long.',[{label:'Leave',run:()=>{}}]);
+  else if(!carWashShiftDone)openDialogue('CAR WASH MANAGER','The afternoon rush is over, but there is still work to do. A short shift would put some cash in your pocket.',[{label:'Work the short shift (+$300)',run:()=>{cash+=300;carWashShiftDone=true;showToast('Shift complete. +$300.');saveGame();updateHUD();}},{label:'Ask Jesse how things are going',run:()=>showToast('Jesse says to keep your head down.')}]);
+  else openDialogue('CAR WASH MANAGER','The wash is running smoothly. There is nothing else to do here right now.',[{label:'Leave',run:()=>{}}]);
  }else if(target.type==='talk'){
-  const dinerChoices=[];
-  if(missionStep===6)dinerChoices.push({label:'Listen to the voicemail (start the next lead)',run:()=>{missionStep=7;trust=Math.min(100,trust+2);showToast('A message points to the Route 66 Motel.');saveGame();updateHUD();}});
-  else if(missionStep===1)dinerChoices.push({label:'Ask about the warehouse (advance the lead)',run:()=>{heat+=1;trust=Math.min(100,trust+3);missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
-  else if(missionStep===3)dinerChoices.push({label:'Hand over the sealed envelope (complete delivery)',run:()=>{missionStep=4;cash+=900;heat=Math.max(0,heat-3);trust=Math.min(100,trust+5);showToast('Delivery complete. +$900 · A contact is waiting at the gas station.');saveGame();updateHUD();}});
-  else if(missionStep===0)dinerChoices.push({label:'You should speak to Jesse at the car wash first.',run:()=>{showToast('Jesse is waiting at the car wash.');}});
-  dinerChoices.push({label:'Take a break (+35 health)',run:()=>{healPlayer(35,0);showToast('You rested at the diner.');}});
-  dinerChoices.push({label:'Buy a meal (+60 health, $250)',run:()=>{if(healPlayer(60,250))showToast('You feel much better.');}});
-  openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',dinerChoices);
+  if(missionStep===10)openDialogue('MARA · DINER WAITRESS','I saw the van leave after midnight. The driver dropped a receipt. He said room six at the Route 66 Motel was paid in cash.',[{label:'Pay $100 for the receipt',run:()=>{if(cash<100){showToast('You do not have enough cash.');return;}cash-=100;missionStep=11;showToast('Receipt purchased. -$100');saveGame();updateHUD();}},{label:'Take the lead and owe her a favor',run:()=>{missionStep=11;showToast('You have a lead on the driver.');saveGame();updateHUD();}}]);
+  else if(missionStep===17)openDialogue('THE COURIER','The shipment was rerouted. The warehouse list has the new destination, but I will not hand it over for free.',[{label:'Pay $300 for the route',run:()=>{if(cash<300){showToast('You do not have enough cash.');return;}cash-=300;missionStep=18;showToast('Route purchased. -$300');saveGame();updateHUD();}},{label:'Take the route without paying',run:()=>{missionStep=18;showToast('The courier gives you a partial route.');saveGame();updateHUD();}}]);
+  else{
+   const choices=[];
+   if(missionStep===1)choices.push({label:'Ask about the warehouse',run:()=>{missionStep=2;showToast('A lead on the warehouse has been added to your map.');saveGame();updateHUD();}});
+   else if(missionStep===3)choices.push({label:'Hand over the sealed envelope (+$900)',run:()=>{missionStep=4;cash+=900;showToast('Delivery complete. +$900. A contact is waiting at the gas station.');saveGame();updateHUD();}});
+   else if(missionStep===6)choices.push({label:'Listen to the voicemail',run:()=>{missionStep=7;showToast('A message points to the Route 66 Motel.');saveGame();updateHUD();}});
+   if(!choices.length)choices.push({label:'Ask what people have heard around town',run:()=>showToast('Nobody has anything new to add.')});
+   choices.push({label:'Leave the diner',run:()=>{}});
+   openDialogue('DINER REGULAR','The neighborhood is tense. A few people have noticed the same van making late-night stops.',choices);
+  }
  }else if(target.type==='gas'){
-  const gasChoices=[];
-  if(missionStep===4)gasChoices.push({label:'Meet the stranger (continue the story)',run:()=>{missionStep=5;trust=Math.min(100,trust+6);heat=Math.min(100,heat+8);showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}});
-  gasChoices.push({label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}});
-  gasChoices.push({label:'Rest and recover (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}});
-  openDialogue(missionStep===4?'THE STRANGER':'GAS STATION',missionStep===4?'You came. Keep your voice down. I have a name, a place, and a reason this needs to stay quiet.':'A quiet stop beside the highway. The attendant offers first aid and a chance to regroup.',gasChoices);
+  if(missionStep===4)openDialogue('THE STRANGER','You came. Keep your voice down. I have a name, a place, and a reason this needs to stay quiet.',[{label:'Hear the proposal',run:()=>{missionStep=5;showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}},{label:'Walk away',run:()=>{missionStep=5;showToast('You decide to hear the rest later.');saveGame();updateHUD();}}]);
+  else if(missionStep===11)openDialogue('THE DRIVER','I drove the van. I did not know what was inside. The motel clerk has the key, but I need to know you are serious.',[{label:'Pay him $250 for the details',run:()=>{if(cash<250){showToast('You do not have enough cash.');return;}cash-=250;missionStep=12;showToast('The driver gives you the room number. -$250');saveGame();updateHUD();}},{label:'Take the room number and leave',run:()=>{missionStep=12;showToast('The driver tells you where to look.');saveGame();updateHUD();}}]);
+  else if(missionStep===16)openDialogue('NIGHT DRIVER','I was told to leave the package at the diner, but the courier changed the route. Someone at the diner knows where he went.',[{label:'Ask for the courier description',run:()=>{missionStep=17;showToast('The driver describes the courier. Head to the diner.');saveGame();updateHUD();}},{label:'Pay $200 for the driver’s notes',run:()=>{if(cash<200){showToast('You do not have enough cash.');return;}cash-=200;missionStep=17;showToast('Notes purchased. -$200');saveGame();updateHUD();}}]);
+  else openDialogue('GAS STATION ATTENDANT','A quiet stop beside the highway. The attendant has seen plenty of strange cars, but remembers very little.',[{label:'Leave',run:()=>{}}]);
  }else if(target.type==='motel'){
-  if(missionStep===7)openDialogue('MOTEL CONTACT','You are late. The courier left an envelope under the ice machine. There are two names inside. One of them is going to make trouble.',[
-   {label:'Open the envelope (+$700, trust +8, heat +6)',run:()=>{cash+=700;trust=Math.min(100,trust+8);heat=Math.min(100,heat+6);missionStep=8;showToast('You found the names. Take the evidence back to Jesse.');saveGame();updateHUD();}},
-   {label:'Leave it sealed (+$200, trust -3, heat -4)',run:()=>{cash+=200;trust=Math.max(0,trust-3);heat=Math.max(0,heat-4);missionStep=8;showToast('You leave the envelope sealed. Return to the car wash.');saveGame();updateHUD();}}
-  ]);
+  if(missionStep===7)openDialogue('MOTEL CONTACT','You are late. The courier left an envelope under the ice machine. There are two names inside. One of them is going to make trouble.',[{label:'Open the envelope (+$700)',run:()=>{cash+=700;missionStep=8;showToast('You found the names. Take the evidence back to Jesse. +$700');saveGame();updateHUD();}},{label:'Leave it sealed (+$200)',run:()=>{cash+=200;missionStep=8;showToast('You leave the envelope sealed. Return to the car wash. +$200');saveGame();updateHUD();}}]);
+  else if(missionStep===12)openDialogue('MOTEL CLERK','Room six was paid for in cash. The driver left a key with me and said someone would come asking.',[{label:'Pay $150 for the key',run:()=>{if(cash<150){showToast('You do not have enough cash.');return;}cash-=150;missionStep=13;showToast('Room six key acquired. -$150');saveGame();updateHUD();}},{label:'Convince the clerk to hand it over',run:()=>{missionStep=13;showToast('The clerk slides the key across the counter.');saveGame();updateHUD();}}]);
+  else if(missionStep===19)openDialogue('MOTEL MANAGER','Room six was cleared before dawn. The cargo was moved through the back lot. The person who signed for it is waiting at the car wash.',[{label:'Get the name and leave',run:()=>{missionStep=20;showToast('You have the name. Return to Jesse.');saveGame();updateHUD();}}]);
   else openDialogue('MOTEL MANAGER','The motel is quiet. Keep the noise down and stay out of the parking spaces.',[{label:'Leave',run:()=>{}}]);
  }else if(target.type==='police'){
-  if(policeHelpUsed)openDialogue('OFFICER','I already gave you a warning. Keep moving and stay out of trouble.',[{label:'Walk away',run:()=>{}}]);
-  else if(heat>=30)openDialogue('OFFICER','We have heard a few things about you. You can cooperate, or make this more difficult.',[
-   {label:'Cooperate ($500 · reduce heat by 25)',run:()=>{if(cash<500){showToast('You do not have enough cash.');return;}cash-=500;heat=Math.max(0,heat-25);policeHelpUsed=true;showToast('The officer lets you go. Heat reduced.');saveGame();updateHUD();}},
-   {label:'Refuse to answer (heat +8)',run:()=>{heat=Math.min(100,heat+8);policeHelpUsed=true;showToast('The officer will remember you.');saveGame();updateHUD();}}
-  ]);
-  else openDialogue('OFFICER','Quiet day. Keep your distance from the warehouse district and there will be no trouble.',[
-   {label:'Ask for directions (heat -3)',run:()=>{heat=Math.max(0,heat-3);policeHelpUsed=true;showToast('A brief conversation puts the officer at ease.');saveGame();updateHUD();}},
-   {label:'Leave',run:()=>{}}
-  ]);
+  openDialogue('OFFICER','We have had reports of a van moving through this district after midnight. If you see it again, stay clear and call it in.',[{label:'Ask for the time of the report',run:()=>showToast('The report was logged just after midnight.')},{label:'Walk away',run:()=>{}}]);
  }else if(target.type==='warehouse'){
   if(missionStep<2)openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
-  else if(missionStep===2)openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[
-   {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat=Math.min(100,heat+2);cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800 · A delivery is waiting.');saveGame();updateHUD();}},
-   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat=Math.min(100,heat+18);missionStep=3;showToast('You got what you came for. +$2,400 · A delivery is waiting.');saveGame();updateHUD();}}
-  ]);
-  else if(missionStep===5)openDialogue('WAREHOUSE CONTACT','The stranger has a proposal. It is a chance to build trust, but every deal leaves a trace.',[
-   {label:'Accept the quiet deal (+$1,600, trust +10)',run:()=>{cash+=1600;trust=Math.min(100,trust+10);heat=Math.min(100,heat+10);missionStep=6;showToast('Deal made. +$1,600.');saveGame();updateHUD();}},
-   {label:'Walk away (heat -5)',run:()=>{heat=Math.max(0,heat-5);missionStep=6;showToast('You leave without making a deal.');saveGame();updateHUD();}}
-  ]);
-  else openDialogue('WAREHOUSE CONTACT','The warehouse is quiet for now. You have completed the second chapter.',[{label:'Understood',run:()=>{}}]);
+  else if(missionStep===2)openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[{label:'Talk it through (+$1,800)',run:()=>{cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800. A delivery is waiting.');saveGame();updateHUD();}},{label:'Push for the details (+$2,400)',run:()=>{cash+=2400;missionStep=3;showToast('You get the information you came for. +$2,400.');saveGame();updateHUD();}}]);
+  else if(missionStep===5)openDialogue('WAREHOUSE CONTACT','The stranger has a proposal. It is a chance to make money, but every deal leaves a trace.',[{label:'Accept the quiet deal (+$1,600)',run:()=>{cash+=1600;missionStep=6;showToast('Deal made. +$1,600.');saveGame();updateHUD();}},{label:'Walk away',run:()=>{missionStep=6;showToast('You leave without making a deal.');saveGame();updateHUD();}}]);
+  else if(missionStep===13)openDialogue('WAREHOUSE ARCHIVIST','The ledger is here. It lists the motel payments, the van, and a shipment that never reached its destination.',[{label:'Take the ledger',run:()=>{missionStep=14;showToast('Ledger secured. Return to Jesse.');saveGame();updateHUD();}},{label:'Photograph the pages (+$250)',run:()=>{cash+=250;missionStep=14;showToast('You sell a copy of the ledger. +$250.');saveGame();updateHUD();}}]);
+  else if(missionStep===18)openDialogue('WAREHOUSE CONTACT','The list confirms the shipment was split into two loads. The motel was only a transfer point. Jesse needs to know who signed the manifest.',[{label:'Take the manifest',run:()=>{missionStep=19;showToast('Manifest secured. Go to the motel.');saveGame();updateHUD();}},{label:'Sell a copy (+$400)',run:()=>{cash+=400;missionStep=19;showToast('A copy is sold. +$400.');saveGame();updateHUD();}}]);
+  else openDialogue('WAREHOUSE CONTACT','The warehouse is quiet for now. There is nothing new to discuss.',[{label:'Leave',run:()=>{}}]);
  }
 }
 function updateActive(){
@@ -618,7 +598,7 @@ function updateActive(){
 }
 function drawMiniMap(){
  const canvas=$('minimap');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=.48;
- ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(13,19,16,.9)';ctx.fillRect(0,0,w,h);
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(13,19,16,.22)';ctx.fillRect(0,0,w,h);
  ctx.strokeStyle='rgba(213,196,153,.32)';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(w,cy);ctx.stroke();
  ctx.strokeStyle='rgba(213,196,153,.18)';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,h);ctx.stroke();
  for(const l of locations){const dx=(l.pos.x-player.position.x)*scale,dy=(l.pos.z-player.position.z)*scale;if(Math.abs(dx)>cx-9||Math.abs(dy)>cy-9)continue;ctx.fillStyle=l.type==='warehouse'?'#c58c64':l.type==='gas'?'#83b7c1':'#d4b978';ctx.beginPath();ctx.arc(cx+dx,cy+dy,5,0,Math.PI*2);ctx.fill();}
@@ -629,7 +609,7 @@ function drawMiniMap(){
 function drawWorldMap(){
  const canvas=$('world-map');if(!canvas)return;const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,scale=Math.min((w-90)/520,(h-70)/520);
  const p=(x,z)=>({x:cx+x*scale,y:cy+z*scale});
- ctx.clearRect(0,0,w,h);ctx.fillStyle='#202a22';ctx.fillRect(0,0,w,h);
+ ctx.clearRect(0,0,w,h);ctx.fillStyle='rgba(32,42,34,.30)';ctx.fillRect(0,0,w,h);
  ctx.strokeStyle='rgba(192,177,138,.09)';ctx.lineWidth=1;
  for(let x=-250;x<=250;x+=25){const q=p(x,0);ctx.beginPath();ctx.moveTo(q.x,35);ctx.lineTo(q.x,h-35);ctx.stroke();}
  for(let z=-250;z<=250;z+=25){const q=p(0,z);ctx.beginPath();ctx.moveTo(35,q.y);ctx.lineTo(w-35,q.y);ctx.stroke();}
@@ -711,10 +691,14 @@ $('mobile-interact').addEventListener('pointerdown',unlockGameAudio,{passive:tru
 $('mobile-interact').onclick=onInteract;
 
 function resize(){
- camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
- renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(innerWidth,innerHeight);
+ const width=Math.max(1,Math.round(window.visualViewport?.width||innerWidth));
+ const height=Math.max(1,Math.round(window.visualViewport?.height||innerHeight));
+ camera.aspect=width/height;camera.updateProjectionMatrix();
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.65));renderer.setSize(width,height);
 }
 window.addEventListener('resize',resize);
+window.addEventListener('orientationchange',()=>setTimeout(resize,120));
+window.visualViewport?.addEventListener('resize',resize);
 const clock=new THREE.Clock();
 let lastAutoSave=0,uiRefreshClock=0;
 function animate(){
@@ -753,13 +737,7 @@ function animate(){
    }
    if(collision){
     driveSpeed=0; // A blocked vehicle stops instead of bouncing through the obstacle.
-    if(crashCooldown<=0){
-     playImpact();
-     const pedestrian=collision==='pedestrian';
-     damagePlayer(pedestrian?8:4,pedestrian?'A pedestrian is in the way.':'Vehicle collision: '+collision+'.');
-     if(pedestrian)heat=Math.min(100,heat+5);
-     updateHUD();crashCooldown=1.4;
-    }
+    if(crashCooldown<=0){playImpact();const pedestrian=collision==='pedestrian';showToast(pedestrian?'The car stopped before reaching the pedestrian.':'Vehicle collision: '+collision+'.');crashCooldown=1.0;}
    }
    playerCar.position.x=THREE.MathUtils.clamp(playerCar.position.x,-245,245);playerCar.position.z=THREE.MathUtils.clamp(playerCar.position.z,-235,235);
    player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
@@ -793,7 +771,7 @@ function animate(){
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
- animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
+ animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);animateNpc(witnessNPC);animateNpc(driverNPC);animateNpc(motelClerkNPC);animateNpc(warehouseArchivistNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
  ambientNPCs.forEach((npc,i)=>{
    animateNpc(npc);
    const carDistance=Math.hypot(npc.root.position.x-playerCar.position.x,npc.root.position.z-playerCar.position.z);
