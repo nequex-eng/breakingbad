@@ -237,7 +237,7 @@ function updateHUD(){
  const step=Math.min(missionStep,6);
  $('mission-title').textContent=titles[step];
  $('mission-copy').textContent=copies[step];
- const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','38%','68%','100%'][step];
+ const progress=document.querySelector('.objective-progress i');if(progress)progress.style.width=['8%','24%','42%','60%','76%','90%','100%'][step];
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
