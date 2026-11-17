@@ -59,6 +59,12 @@ for(let x=-245;x<250;x+=18){
 for(let z=-190;z<=190;z+=38){
  box(scene,0,0.012,z,14,0.025,2,materials.sidewalk,false);
 }
+// A short access road connects the main avenue to the desert warehouse.
+box(scene,100,0.006,-26,12,.025,52,materials.asphalt,false);
+box(scene,93,0.012,-26,1.8,.035,52,materials.sidewalk,false);
+box(scene,107,0.012,-26,1.8,.035,52,materials.sidewalk,false);
+for(let z=-44;z<=-8;z+=18)box(scene,100,.03,z,.14,.03,7,materials.yellow,false);
+box(scene,100,.012,-50,24,.025,10,materials.asphalt,false);
 
 // Distant mesa silhouettes
 for(let i=0;i<13;i++){
@@ -189,7 +195,7 @@ function worldLabel(text,x,z,color='#e8d9b8'){
  ctx.fillStyle='rgba(16,21,17,.82)';ctx.fillRect(0,0,512,112);ctx.strokeStyle=color;ctx.lineWidth=5;ctx.strokeRect(3,3,506,106);
  ctx.fillStyle=color;ctx.font='bold 42px monospace';ctx.textAlign='center';ctx.fillText(text,256,70);
  const tex=new THREE.CanvasTexture(c);const mesh=new THREE.Mesh(new THREE.PlaneGeometry(13,2.8),new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false}));
- mesh.position.set(x,8,z);scene.add(mesh);return mesh;
+ mesh.position.set(x,11.5,z);scene.add(mesh);return mesh;
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22),worldLabel('POLICE PATROL',96,30,'#9bb9d9')];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
