@@ -252,6 +252,39 @@ const keys={};
 let yaw=Math.PI, pitch=.25, dragging=false, lastX=0,lastY=0;
 const cameraTarget=new THREE.Vector3();
 
+let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,soundEnabled=false,footstepClock=0;
+function setupGameAudio(){
+ const AudioCtor=window.AudioContext||window.webkitAudioContext;
+ if(!AudioCtor){showToast('Audio is not supported by this browser.');return false;}
+ audioContext=new AudioCtor();
+ audioMaster=audioContext.createGain();audioMaster.gain.value=0;audioMaster.connect(audioContext.destination);
+ const buffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate),data=buffer.getChannelData(0);
+ for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.34;
+ const wind=audioContext.createBufferSource();wind.buffer=buffer;wind.loop=true;
+ const windFilter=audioContext.createBiquadFilter();windFilter.type='lowpass';windFilter.frequency.value=420;
+ windGain=audioContext.createGain();windGain.gain.value=.18;wind.connect(windFilter);windFilter.connect(windGain);windGain.connect(audioMaster);wind.start();
+ engineOsc=audioContext.createOscillator();engineOsc.type='sawtooth';engineOsc.frequency.value=42;
+ const engineFilter=audioContext.createBiquadFilter();engineFilter.type='lowpass';engineFilter.frequency.value=180;
+ engineGain=audioContext.createGain();engineGain.gain.value=0;engineOsc.connect(engineFilter);engineFilter.connect(engineGain);engineGain.connect(audioMaster);engineOsc.start();
+ return true;
+}
+async function toggleGameAudio(){
+ if(!audioContext&&!setupGameAudio())return;
+ try{if(audioContext.state==='suspended')await audioContext.resume();}catch{return;}
+ soundEnabled=!soundEnabled;
+ audioMaster.gain.setTargetAtTime(soundEnabled?.32:0,audioContext.currentTime,.22);
+ $('sound-toggle').textContent=soundEnabled?'SOUND ON':'SOUND OFF';
+ $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled));
+ showToast(soundEnabled?'Desert ambience enabled.':'Sound muted.');
+}
+$('sound-toggle').addEventListener('click',toggleGameAudio);
+function playFootstep(){
+ if(!soundEnabled||!audioContext)return;
+ const osc=audioContext.createOscillator(),gain=audioContext.createGain();
+ osc.type='triangle';osc.frequency.setValueAtTime(118,audioContext.currentTime);osc.frequency.exponentialRampToValueAtTime(48,audioContext.currentTime+.085);
+ gain.gain.setValueAtTime(.045,audioContext.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.09);
+ osc.connect(gain);gain.connect(audioMaster);osc.start();osc.stop(audioContext.currentTime+.1);
+}
 function showToast(text){
  $('toast').textContent=text; $('toast').classList.add('show');
  clearTimeout(showToast.timer); showToast.timer=setTimeout(()=>$('toast').classList.remove('show'),2600);
@@ -487,6 +520,8 @@ function animate(){
   }
  }
  updateActive();
+ if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.42){playFootstep();footstepClock=0;}}else footstepClock=0;
+ if(soundEnabled&&audioContext&&engineOsc){engineOsc.frequency.setTargetAtTime(42+Math.abs(driveSpeed)*2.8,audioContext.currentTime,.12);engineGain.gain.setTargetAtTime(driving?.055+Math.min(Math.abs(driveSpeed)/24,.7)*.035:0,audioContext.currentTime,.18);}
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
