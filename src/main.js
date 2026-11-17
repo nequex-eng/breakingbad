@@ -208,8 +208,11 @@ function showToast(text){
 function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
  updateHealthUI();
- $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
- $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
+ const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','CHAPTER ONE COMPLETE'];
+ const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','You completed the first chapter. Explore Albuquerque and recover when needed.'];
+ const step=Math.min(missionStep,3);
+ $('mission-title').textContent=titles[step];
+ $('mission-copy').textContent=copies[step];
 }
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
