@@ -333,10 +333,6 @@ function animate(){
 }
 updateHUD();saveGame();drawMiniMap();animate();
 setTimeout(()=>$('loading').classList.add('gone'),700);
-+cash.toLocaleString('en-US');updateHealthUI();
- $('mission-title').textContent=missionStep===0?'A DIFFERENT KIND OF FUTURE':missionStep===1?'A CONVERSATION IN THE DESERT':'A NEW SET OF PROBLEMS';
- $('mission-copy').textContent=missionStep===0?'Head to the car wash. Someone is waiting to talk.':missionStep===1?'Visit the diner and decide who deserves your trust.':'Explore Albuquerque. Your choices are beginning to spread.';
-}
 function openDialogue(speaker,text,choices){
  dialogOpen=true; $('speaker').textContent=speaker; $('dialogue-text').textContent=text;
  const actions=$('dialogue-actions'); actions.innerHTML='';
