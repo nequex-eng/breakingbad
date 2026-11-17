@@ -394,6 +394,7 @@ function updateObjectiveDistance(){
 
 const keys={};
 let yaw=Math.PI, pitch=.25, dragging=false, lastX=0,lastY=0;
+let firstPerson=false;
 const cameraTarget=new THREE.Vector3();
 
 // Keep the follow camera outside the main building shells instead of letting it clip through walls.
