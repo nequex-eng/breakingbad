@@ -231,7 +231,8 @@ function showToast(text){
 function updateHUD(){
  $('cash').textContent='$' + cash.toLocaleString('en-US');
  updateHealthUI();
- $('stats').textContent='TRUST '+Math.round(trust)+' · HEAT '+Math.round(heat);
+ trust=THREE.MathUtils.clamp(trust,0,100);heat=THREE.MathUtils.clamp(heat,0,100);
+ $('stats').textContent='TRUST '+Math.round(trust)+' · HEAT '+Math.round(heat)+(heat>=30?' · POLICE ALERT':'');
  const titles=['A DIFFERENT KIND OF FUTURE','A CONVERSATION IN THE DESERT','THE WAREHOUSE LEAD','THE LONG WAY HOME','A FACE AT THE GAS STATION','THE SECOND MEETING','CHAPTER TWO COMPLETE'];
  const copies=['Head to the car wash. Jesse is waiting to talk.','Visit the diner and decide who deserves your trust.','The diner lead is in. Head to the desert warehouse.','A contact left a sealed envelope. Take it to the diner. The sedan will make the trip faster.','A stranger has been asking questions at the gas station. Go see what they know.','The new contact has a proposal. Return to the desert warehouse.','You reached a new understanding. Explore Albuquerque, take a shift, or recover at the diner.'];
  const step=Math.min(missionStep,6);
@@ -273,7 +274,7 @@ function interact(target){
   openDialogue('DINER REGULAR','The neighborhood is tense. Sit down, catch your breath, or ask what people have heard around town.',dinerChoices);
  }else if(target.type==='gas'){
   const gasChoices=[];
-  if(missionStep===4)gasChoices.push({label:'Meet the stranger (continue the story)',run:()=>{missionStep=5;trust=Math.min(100,trust+6);heat=Math.min(100,heat+3);showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}});
+  if(missionStep===4)gasChoices.push({label:'Meet the stranger (continue the story)',run:()=>{missionStep=5;trust=Math.min(100,trust+6);heat=Math.min(100,heat+8);showToast('A new lead points back to the desert warehouse.');saveGame();updateHUD();}});
   gasChoices.push({label:'Use first-aid kit (+45 health, $180)',run:()=>{if(healPlayer(45,180))showToast('First-aid kit used.');}});
   gasChoices.push({label:'Rest and recover (+100 health, $400)',run:()=>{if(healPlayer(100,400))showToast('You are back in shape.');}});
   openDialogue('GAS STATION','A quiet stop beside the highway. Someone has been waiting here, asking for you.',gasChoices);
@@ -291,10 +292,10 @@ function interact(target){
   if(missionStep<2)openDialogue('WAREHOUSE SECURITY','The warehouse is not ready for visitors. You need a lead before you can get inside.',[{label:'Leave for now',run:()=>{}}]);
   else if(missionStep===2)openDialogue('WAREHOUSE CONTACT','You made it. This is where the next chapter begins. Keep your head clear and decide how to handle the pressure.',[
    {label:'Talk it through (+15 trust)',run:()=>{trust=Math.min(100,trust+15);heat=Math.min(100,heat+2);cash+=1800;missionStep=3;showToast('The meeting went well. +$1,800 · A delivery is waiting.');saveGame();updateHUD();}},
-   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat=Math.min(100,heat+8);missionStep=3;showToast('You got what you came for. +$2,400 · A delivery is waiting.');saveGame();updateHUD();}}
+   {label:'Force the issue (-35 health, +$2,400)',run:()=>{damagePlayer(35,'A tense confrontation.');cash+=2400;heat=Math.min(100,heat+18);missionStep=3;showToast('You got what you came for. +$2,400 · A delivery is waiting.');saveGame();updateHUD();}}
   ]);
   else if(missionStep===5)openDialogue('WAREHOUSE CONTACT','The stranger has a proposal. It is a chance to build trust, but every deal leaves a trace.',[
-   {label:'Accept the quiet deal (+$1,600, trust +10)',run:()=>{cash+=1600;trust=Math.min(100,trust+10);heat=Math.min(100,heat+4);missionStep=6;showToast('Deal made. +$1,600.');saveGame();updateHUD();}},
+   {label:'Accept the quiet deal (+$1,600, trust +10)',run:()=>{cash+=1600;trust=Math.min(100,trust+10);heat=Math.min(100,heat+10);missionStep=6;showToast('Deal made. +$1,600.');saveGame();updateHUD();}},
    {label:'Walk away (heat -5)',run:()=>{heat=Math.max(0,heat-5);missionStep=6;showToast('You leave without making a deal.');saveGame();updateHUD();}}
   ]);
   else openDialogue('WAREHOUSE CONTACT','The warehouse is quiet for now. You have completed the second chapter.',[{label:'Understood',run:()=>{}}]);
