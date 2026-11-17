@@ -24,3 +24,5 @@ All visuals are generated in code. Replace the prototype geometry with licensed/
 
 ## Deployment
 Cloudflare Pages project: `breakingbad-world` (Git-connected, automatic production builds from `main`).
+
+Build trigger check: source path filter now watches all repository paths.
