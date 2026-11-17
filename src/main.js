@@ -297,7 +297,9 @@ const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStor
 let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,localsTalked,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
-if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
+if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
+ if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y)){playerCar.position.set(-6,0,8);playerCar.rotation.y=0;player.position.copy(playerCar.position);showToast('Vehicle repositioned to a safe road after loading.');}
+}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
 function currentObjective(){if(customWaypoint)return {name:'CUSTOM WAYPOINT',pos:customWaypoint};return missionStep===0?locations[0]:missionStep===1?locations[1]:missionStep===2?locations[2]:missionStep===3?locations[1]:missionStep===4?locations[3]:missionStep===5?locations[2]:missionStep===6?locations[1]:missionStep===7?locations[5]:missionStep===8?locations[0]:null;}
 const objectiveBeacon=new THREE.Group();
@@ -624,7 +626,9 @@ function animate(){
    driveSpeed=THREE.MathUtils.clamp(driveSpeed+throttle*15*dt,-10,24);
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
-   if(Math.abs(driveSpeed)>.25)playerCar.rotation.y-=steering*1.45*dt*(driveSpeed>=0?1:-1);
+   const oldRotation=playerCar.rotation.y;
+   const steeredRotation=oldRotation-steering*1.45*dt*(driveSpeed>=0?1:-1);
+   if(!vehicleCollisionAt(playerCar.position,steeredRotation))playerCar.rotation.y=steeredRotation;
    const oldPosition=playerCar.position.clone();
    const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
    const next=oldPosition.clone().addScaledVector(heading,driveSpeed*dt);
