@@ -1,12 +1,8 @@
-const CACHE="abq-stories-shell-v2";
-const SHELL=["/","/index.html","/manifest.webmanifest","/icons/abq.svg"];
-self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
-self.addEventListener("activate",event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith("abq-stories-")&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
-self.addEventListener("fetch",event=>{
- const request=event.request,url=new URL(request.url);
- if(request.method!=="GET"||url.origin!==self.location.origin)return;
- event.respondWith(fetch(request,{cache:"no-store"}).then(response=>{
-  if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(request,copy));}
-  return response;
- }).catch(async()=>await caches.match(request)||((request.mode==="navigate"||request.destination==="document")?await caches.match("/index.html"):new Response("Offline asset unavailable.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}}))));
-});
+// Retire the legacy offline shell. Current game assets are served directly by Pages.
+self.addEventListener("install", event => event.waitUntil(self.skipWaiting()));
+self.addEventListener("activate", event => event.waitUntil((async () => {
+  await self.registration.unregister();
+  const keys = await caches.keys();
+  await Promise.all(keys.filter(key => key.startsWith("abq-stories-")).map(key => caches.delete(key)));
+  await self.clients.claim();
+})()));
