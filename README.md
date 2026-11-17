@@ -1,14 +1,30 @@
 # Albuquerque Stories
 
-An unofficial, non-commercial fan-made browser game prototype inspired by the television drama *Breaking Bad*. This project is not affiliated with or endorsed by the rights holders.
+An unofficial, non-commercial browser-game prototype inspired by the television drama *Breaking Bad*. This project is not affiliated with or endorsed by the rights holders.
 
-## Current prototype
-- Third-person 3D Albuquerque neighborhood built from original procedural geometry
-- Keyboard and touch movement, camera orbit, proximity interactions
-- First mission, dialogue choices, cash and relationship state
-- No ripped show footage, logos, music, or copyrighted game assets
+## Current game
+
+- Third-person 3D Albuquerque neighborhood with car wash, diner, gas station, desert warehouse, street traffic props and desert access road
+- Keyboard and touch movement, camera orbit, collision-aware walking and a drivable sedan
+- On-screen objective distance, 3D waypoint beacon, nearby minimap and full-screen city map
+- Story missions with branching dialogue, delivery run, cash, trust and heat
+- Side activities and services: one-time car-wash shift, diner rest and meals, gas-station first aid, and police encounter
+- Character and NPC idle/walking animations
+- Local save for story progress, player/vehicle positions and choices
+
+## Controls
+
+- **W / S**: walk forward / backward; accelerate / reverse while driving
+- **A / D**: strafe while walking; steer while driving
+- **Shift**: walk faster
+- **E**: interact / enter or exit the sedan
+- **M** or tap the minimap: open the full city map
+- **Esc**: close map or dialogue
+- **Drag**: rotate the camera
+- On mobile, use the directional pad and E button; tap the minimap to expand it
 
 ## Development
+
 ```bash
 npm install
 npm run dev
@@ -16,16 +32,10 @@ npm run build
 ```
 
 ## Cloudflare Pages
+
 Build command: `npm run build`  
 Output directory: `dist`
 
-All visuals are generated in code. Replace the prototype geometry with licensed/original assets as production work progresses.
-
-
-## Deployment
 Cloudflare Pages project: `breakingbad-world` (Git-connected, automatic production builds from `main`).
 
-Build trigger check: source path filter now watches all repository paths.
-
-
-Cloudflare Pages path trigger verified against the main branch.
+All visuals are generated in code. Replace prototype geometry with original or properly licensed assets as production work progresses.
