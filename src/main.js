@@ -143,7 +143,8 @@ function car(x,z,color,rotation=0){
  }
  return g;
 }
-car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
+const playerCar=car(8,-6,0x8d8d86,Math.PI); car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
+let driving=false,driveSpeed=0;
 
 // Player character, original low-poly civilian silhouette
 const player=new THREE.Group(); scene.add(player);
@@ -254,13 +255,17 @@ function interact(target){
 }
 function updateActive(){
  active=null; let best=Infinity;
+ const el=$('interaction');
+ if(driving){el.classList.add('visible');$('interaction-copy').textContent=' EXIT VEHICLE';}
+ else if(player.position.distanceTo(playerCar.position)<4.8){el.classList.add('visible');$('interaction-copy').textContent=' ENTER SEDAN';}
+ else {
  for(const l of locations){
   const d=player.position.distanceTo(l.pos);
   if(d<l.range&&d<best){best=d;active=l;}
  }
- const el=$('interaction');
  if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
- else el.classList.remove('visible');
+ else if(!driving&&player.position.distanceTo(playerCar.position)>=4.8)el.classList.remove('visible');
+ }
  let zone='RESIDENTIAL DISTRICT';
  if(player.position.distanceTo(locations[0].pos)<35) zone='CAR WASH DISTRICT';
  if(player.position.distanceTo(locations[1].pos)<35) zone='DINER DISTRICT';
@@ -276,7 +281,9 @@ function drawMiniMap(){
  for(const l of locations){const dx=(l.pos.x-player.position.x)*scale,dy=(l.pos.z-player.position.z)*scale;if(Math.abs(dx)>cx-9||Math.abs(dy)>cy-9)continue;ctx.fillStyle=l.type==='warehouse'?'#c58c64':l.type==='gas'?'#83b7c1':'#d4b978';ctx.beginPath();ctx.arc(cx+dx,cy+dy,5,0,Math.PI*2);ctx.fill();}
  ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
 }
-function onInteract(){if(!dialogOpen&&active)interact(active);}
+function enterVehicle(){driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
+function exitVehicle(){driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
+function onInteract(){if(dialogOpen)return;if(driving){exitVehicle();return;}if(player.position.distanceTo(playerCar.position)<4.8){enterVehicle();return;}if(active)interact(active);}
 
 window.addEventListener('keydown',e=>{
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
@@ -311,15 +318,34 @@ function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
  if(!dialogOpen){
-  const forward=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
-  const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
-  const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
-  const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
-  const right=new THREE.Vector3(direction.z,0,-direction.x);
-  const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+  if(driving){
+   const throttle=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0);
+   const steering=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+   driveSpeed=THREE.MathUtils.clamp(driveSpeed+throttle*15*dt,-10,24);
+   if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
+   if(Math.abs(driveSpeed)<.08)driveSpeed=0;
+   if(Math.abs(driveSpeed)>.25)playerCar.rotation.y+=steering*1.45*dt*(driveSpeed>=0?1:-1);
+   const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
+   const next=playerCar.position.clone().addScaledVector(heading,driveSpeed*dt);
+   const solid=[[ -30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7]];
+   const blocked=(x,z)=>solid.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.8&&Math.abs(z-oz)<rz+1.8);
+   const oldX=playerCar.position.x,oldZ=playerCar.position.z;
+   if(!blocked(next.x,oldZ))playerCar.position.x=next.x;
+   if(!blocked(playerCar.position.x,next.z))playerCar.position.z=next.z;
+   if(playerCar.position.x!==next.x||playerCar.position.z!==next.z)driveSpeed*=.18;
+   player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
+   $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H';
+  }else{
+   $('drive-info').textContent='ON FOOT';
+   const forward=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
+   const side=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0);
+   const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+   const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+   const right=new THREE.Vector3(direction.z,0,-direction.x);
+   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
-   const obstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7],[19,15,3.1,2],[-93,19,3.1,2],[51,-20,3.1,2]];
+   const obstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,7,13,8.5],[100,-70,20,16],[78,8,10,7],[19,15,3.1,2],[-93,19,3.1,2],[51,-20,3.1,2],[8,-6,3.5,2.2]];
    const isBlocked=(x,z)=>obstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,oldZ))player.position.x=next.x;
@@ -331,8 +357,9 @@ function animate(){
  }
  updateActive();
  jesseNPC.root.position.y=Math.sin(performance.now()*.0012+jesseNPC.phase)*.025;dinerNPC.root.position.y=Math.sin(performance.now()*.001+dinerNPC.phase)*.018;warehouseNPC.root.position.y=Math.sin(performance.now()*.0011+warehouseNPC.phase)*.02;ambientNPCs.forEach((npc,i)=>{npc.root.position.y=Math.sin(performance.now()*.0009+npc.phase)*.018;npc.root.rotation.y+=Math.sin(performance.now()*.00025+i)*.00015;});
- const camDist=10.5;
- const offset=new THREE.Vector3(Math.sin(yaw)*camDist,4.5+pitch*5,Math.cos(yaw)*camDist);
+ const camDist=driving?15:10.5;
+ const cameraYaw=driving?playerCar.rotation.y:yaw;
+ const offset=driving?new THREE.Vector3(-Math.sin(cameraYaw)*camDist,5.2,-Math.cos(cameraYaw)*camDist):new THREE.Vector3(Math.sin(cameraYaw)*camDist,4.5+pitch*5,Math.cos(cameraYaw)*camDist);
  cameraTarget.set(player.position.x,player.position.y+1.2,player.position.z);
  const desired=cameraTarget.clone().add(offset);
  camera.position.lerp(desired,1-Math.pow(.001,dt));
