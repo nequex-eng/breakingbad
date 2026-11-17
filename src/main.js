@@ -191,6 +191,7 @@ const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation
 const policeNPC=makeNPC(96,30,0x344e6b,0x242b32);policeNPC.root.rotation.y=Math.PI;
 const gasContactNPC=makeNPC(73,27,0x57445e,0x30323c,0x9d7358);gasContactNPC.root.rotation.y=Math.PI;
 const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
+ambientNPCs.forEach((npc,i)=>{npc.home=npc.root.position.clone();npc.wanderPhase=i*2.15;});
 
 const locations=[
  {name:'A-1 CAR WASH',label:'THE CAR WASH',pos:new THREE.Vector3(36,0,43),range:13,type:'mission'},
@@ -208,8 +209,8 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,17),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,22),worldLabel('POLICE PATROL',96,30,'#9bb9d9')];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone;
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,trust=Number.isFinite(saved.trust)?saved.trust:50,heat=Number.isFinite(saved.heat)?saved.heat:8,health=Number.isFinite(saved.health)?THREE.MathUtils.clamp(saved.health,0,100):100,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,policeHelpUsed=!!saved.policeHelpUsed,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[];
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,trust,heat,health,missionStep,policeHelpUsed,carWashShiftDone,localsTalked,playerX:player.position.x,playerZ:player.position.z,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
@@ -261,7 +262,19 @@ $('close-dialogue').onclick=closeDialogue;
 
 function interact(target){
  if(!target)return;
- if(target.type==='mission'){
+ if(target.type==='local'){
+  const lines=[
+   ['NEIGHBOR','That black-and-white cruiser keeps turning around near the avenue. Someone has put the cops on edge.'],
+   ['CAR WASH CUSTOMER','I saw a delivery van heading toward the warehouse road before sunrise. Nobody uses that road without a reason.'],
+   ['DESERT COMMUTER','That stranger at the gas station has been waiting for someone. He does not look like he is from around here.']
+  ];
+  const [speaker,line]=lines[target.index]||lines[0];
+  if(localsTalked.includes(target.index))openDialogue(speaker,'I already told you what I know. I need to get going.',[{label:'Let them go',run:()=>{}}]);
+  else openDialogue(speaker,line,[
+   {label:'Listen and thank them (trust +2, heat -2)',run:()=>{localsTalked.push(target.index);trust=Math.min(100,trust+2);heat=Math.max(0,heat-2);showToast('A useful bit of neighborhood information.');saveGame();updateHUD();}},
+   {label:'Leave them alone',run:()=>{}}
+  ]);
+ }else if(target.type==='mission'){
   if(missionStep===0)openDialogue('JESSE','You said you wanted to talk. So talk. What exactly are you asking me to do?',[
    {label:'“I have a plan. Hear me out.”',run:()=>{trust=Math.min(100,trust+12);cash+=1200;missionStep=1;showToast('Jesse agreed to hear your proposal. +$1,200');saveGame();updateHUD();}},
    {label:'“Forget it. Not today.”',run:()=>{heat=Math.min(100,heat+2);showToast('Jesse leaves. The moment passes.');saveGame();updateHUD();}}
@@ -317,6 +330,10 @@ function updateActive(){
  for(const l of locations){
   const d=player.position.distanceTo(l.pos);
   if(d<l.range&&d<best){best=d;active=l;}
+ }
+ for(let i=0;i<ambientNPCs.length;i++){
+  const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);
+  if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}
  }
  if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
  else if(!driving&&player.position.distanceTo(playerCar.position)>=4.8)el.classList.remove('visible');
@@ -453,7 +470,8 @@ function animate(){
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
  playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
  const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
- animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;ambientNPCs.forEach((npc,i)=>{animateNpc(npc);npc.root.rotation.y+=Math.sin(animTime*.00025+i)*.00015;});
+ animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
+ ambientNPCs.forEach((npc,i)=>{animateNpc(npc);const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;npc.root.position.x=npc.home.x+Math.sin(t)*2.1;npc.root.position.z=npc.home.z+Math.cos(t)*1.15;if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;}});
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
  const camDist=driving?15:10.5;
