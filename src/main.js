@@ -456,14 +456,25 @@ function buildClickMovePath(destination){
   const x=cur%size,z=Math.floor(cur/size),next=[x>0?cur-1:-1,x<size-1?cur+1:-1,z>0?cur-size:-1,z<size-1?cur+size:-1];
   for(const n of next){if(n<0||parent[n]!==-1||(n!==goal&&blocked(n)))continue;parent[n]=cur;queue[write++]=n;}
  }
- if(found<0){clickMovePath=[];showToast('No clear walking route to that point.');return false;}
- const route=[];for(let n=found;n!==start;n=parent[n])route.push(new THREE.Vector3(min+(n%size)*step,0,min+Math.floor(n/size)*step));
- route.reverse();route.push(new THREE.Vector3(destination.x,0,destination.z));clickMovePath=route;return true;
+ if(found<0||blocked(goal)){clickMovePath=[];showToast('Choose an open street or sidewalk, not a building.');return false;}
+ const raw=[];for(let n=found;n!==start;n=parent[n])raw.push(new THREE.Vector3(min+(n%size)*step,0,min+Math.floor(n/size)*step));
+ raw.reverse();
+ // Keep only turning points; a long smooth segment avoids the twitchy, stop-start gait of cell-by-cell steering.
+ const route=[];let previousX=0,previousZ=0;
+ for(let i=0;i<raw.length;i++){
+  const nextX=Math.sign(raw[i].x-(i?raw[i-1].x:player.position.x));
+  const nextZ=Math.sign(raw[i].z-(i?raw[i-1].z:player.position.z));
+  if(i>0&&(nextX!==previousX||nextZ!==previousZ))route.push(raw[i-1]);
+  previousX=nextX;previousZ=nextZ;
+ }
+ if(raw.length)route.push(raw[raw.length-1]);
+ route.push(new THREE.Vector3(destination.x,0,destination.z));clickMovePath=route;return true;
 }
 function setClickDestination(x,z){
  const point=new THREE.Vector3(THREE.MathUtils.clamp(x,-235,235),0,THREE.MathUtils.clamp(z,-230,230));
  if(driving){showToast('Exit the car before setting a walking destination.');return;}
- customWaypoint=point.clone();buildClickMovePath(point);saveGame();drawMiniMap();updateObjectiveDistance();
+ if(!buildClickMovePath(point))return;
+ customWaypoint=point.clone();saveGame();drawMiniMap();updateObjectiveDistance();
 }
 let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI, pitch=-.08, dragging=false, lastX=0,lastY=0;
 player.rotation.y=yaw;
@@ -778,24 +789,39 @@ function drawWorldMap(){
  const block=(x,z,bw,bd,color)=>{const q=p(x,z);ctx.fillStyle=color;ctx.fillRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);ctx.strokeStyle='rgba(227,211,169,.35)';ctx.lineWidth=1;ctx.strokeRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);};
  [[-30,-38,14,11],[-58,-38,12,10],[8,-44,12,10],[42,-42,14,11],[-70,38,11,9],[70,42,14,10]].forEach(v=>block(v[0],v[1],v[2],v[3],'#887f6e'));
  block(36,28,30,19,'#b6a589');block(-82,22,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,24,21,14,'#b9a77d');block(-145,-76,57,14,'#b9ad91');
- ctx.font='bold 15px monospace';ctx.textAlign='left';ctx.fillStyle='#e0d1aa';
- for(const l of locations){const q=p(l.pos.x,l.pos.z);ctx.fillStyle=l.type==='police'?'#9bb9d9':'#dfc27b';ctx.beginPath();ctx.arc(q.x,q.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e0d1aa';ctx.fillText(l.name,q.x+11,q.y-8);}
+ ctx.font='bold 12px monospace';ctx.textAlign='left';
+ const occupied=[];
+ for(const l of locations){
+  const q=p(l.pos.x,l.pos.z);ctx.fillStyle=l.type==='police'?'#9bb9d9':'#dfc27b';ctx.beginPath();ctx.arc(q.x,q.y,5,0,Math.PI*2);ctx.fill();
+  const label=String(l.name),tw=ctx.measureText(label).width,options=[[10,-10],[-tw-10,-10],[10,19],[-tw-10,19],[10,-25],[-tw-10,-25]];
+  let chosen=null;
+  for(const [ox,oy] of options){const box={x:q.x+ox-3,y:q.y+oy-11,w:tw+6,h:15};if(box.x<5||box.x+box.w>w-5||box.y<5||box.y+box.h>h-28)continue;if(!occupied.some(b=>box.x<b.x+b.w+4&&box.x+box.w+4>b.x&&box.y<b.y+b.h+3&&box.y+box.h+3>b.y)){chosen={box,ox,oy};break;}}
+  if(chosen){occupied.push(chosen.box);ctx.fillStyle='rgba(18,24,20,.82)';ctx.fillRect(chosen.box.x,chosen.box.y,chosen.box.w,chosen.box.h);ctx.fillStyle='#e0d1aa';ctx.fillText(label,q.x+chosen.ox,q.y+chosen.oy);}
+ }
  for(const item of [...evidenceItems,...salvageItems]){if(item.root.visible){const q=p(item.pos.x,item.pos.z);ctx.fillStyle=item.kind==='salvage'?'#9ac7a4':'#e5c979';ctx.fillRect(q.x-5,q.y-5,10,10);}}
  if(deliveryItem.root.visible){const q=p(deliveryItem.pos.x,deliveryItem.pos.z);ctx.fillStyle='#8fc4d2';ctx.fillRect(q.x-6,q.y-6,12,12);}
  const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
  const car=p(playerCar.position.x,playerCar.position.z);ctx.save();ctx.translate(car.x,car.y);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#83bfd1';ctx.fillRect(-7,-13,14,26);ctx.restore();
  const me=p(player.position.x,player.position.z);ctx.save();ctx.translate(me.x,me.y);ctx.rotate(-player.rotation.y);ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.restore();
  const objectiveText=target?target.name+' · '+Math.round(player.position.distanceTo(target.pos))+' M':'FREE ROAM';
- ctx.fillStyle='#d8c58f';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.fillText(objectiveText,w/2,h-14);
+ ctx.fillStyle='#d8c58f';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(objectiveText,w/2,h-12);
 }
 function setMapOpen(open){mapOpen=!!open;$('map-overlay').classList.toggle('hidden',!mapOpen);if(mapOpen)drawWorldMap();}
 $('minimap').addEventListener('click',()=>setMapOpen(true));
-$('world-map').addEventListener('click',e=>{
- const canvas=$('world-map'),rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
- const scale=Math.min((canvas.width-90)/520,(canvas.height-70)/520),x=(px-canvas.width/2)/scale,z=(py-canvas.height/2)/scale;
+let mapPointerStart=null;
+const worldMapCanvas=$('world-map');
+worldMapCanvas.addEventListener('pointerdown',e=>{mapPointerStart={x:e.clientX,y:e.clientY,id:e.pointerId};try{worldMapCanvas.setPointerCapture(e.pointerId);}catch{}});
+worldMapCanvas.addEventListener('pointerup',e=>{
+ if(!mapPointerStart||mapPointerStart.id!==e.pointerId)return;
+ const moved=Math.hypot(e.clientX-mapPointerStart.x,e.clientY-mapPointerStart.y);mapPointerStart=null;
+ if(moved>18)return;
+ e.preventDefault();
+ const rect=worldMapCanvas.getBoundingClientRect(),px=(e.clientX-rect.left)*worldMapCanvas.width/rect.width,py=(e.clientY-rect.top)*worldMapCanvas.height/rect.height;
+ const scale=Math.min((worldMapCanvas.width-90)/520,(worldMapCanvas.height-70)/520),x=(px-worldMapCanvas.width/2)/scale,z=(py-worldMapCanvas.height/2)/scale;
  if(x< -245||x>245||z< -245||z>245){showToast('Choose a point inside the city map.');return;}
- setClickDestination(x,z);drawWorldMap();setMapOpen(false);showToast('Destination set · walking there now.');
+ setClickDestination(x,z);drawWorldMap();if(clickMovePath.length)setMapOpen(false);showToast(clickMovePath.length?'Destination set · walking there now.':'Choose another destination.');
 });
+worldMapCanvas.addEventListener('pointercancel',()=>{mapPointerStart=null;});
 const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;clickMovePath=[];saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
 $('map-close').onclick=()=>setMapOpen(false);
 function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('Vehicle entered · W accelerate · A/D steer · S reverse');updateActive();}
@@ -835,7 +861,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
 renderer.domElement.addEventListener('pointercancel',()=>{dragging=false;scenePointerStart=null;});
 renderer.domElement.addEventListener('pointermove',e=>{
  if(!dragging)return;
- yaw+=(e.clientX-lastX)*.004; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.003));
+ yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.003));
  lastX=e.clientX;lastY=e.clientY;
 });
 function bindHold(id,code){
@@ -960,7 +986,7 @@ function animate(){
    if(manualForward!==0||manualSide!==0)clickMovePath=[];
    while(clickMovePath.length&&player.position.distanceTo(clickMovePath[0])<1.9)clickMovePath.shift();
    const autoTarget=clickMovePath[0]||null;
-   if(autoTarget)yaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z);
+   if(autoTarget){yaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z);player.rotation.y=yaw;}
    const forward=autoTarget?1:manualForward;
    const side=autoTarget?0:manualSide;
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
@@ -995,7 +1021,7 @@ function animate(){
    else showToast('Checkpoint '+raceIndex+' / '+raceCheckpoints.length+' cleared. Keep moving!');
   }
  }
- const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.012)*.48:0;
+ const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.008)*.34:0;
  for(const item of [...evidenceItems,...salvageItems,deliveryItem,raceStartItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
  raceGates.forEach((gate,i)=>{if(gate.root.visible)gate.ring.rotation.z+=dt*(i%2?-.65:.65);});
   playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;

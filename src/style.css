@@ -48,3 +48,13 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 #hud{position:absolute!important;inset:0!important;width:100%;height:100%;overflow:hidden;touch-action:none}
 @media(display-mode:standalone){html,body{width:100%;height:100%;overflow:hidden}#app{width:100%!important;height:100%!important;height:100dvh!important}}
 @supports (-webkit-touch-callout:none){html,body{position:fixed!important;inset:0!important;width:100%!important;height:100%!important;overflow:hidden!important}#app{position:fixed!important;inset:0 auto auto 0!important;width:var(--viewport-width,100vw)!important;height:var(--viewport-height,100dvh)!important}#app>canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important}}
+
+/* Final HUD collision fixes and legible expanded objective panel. */
+@media(min-width:701px){.sound-toggle{top:auto!important;right:28px!important;bottom:24px!important;z-index:9}}
+@media(max-width:700px){.sound-toggle{top:auto!important;right:14px!important;bottom:calc(22px + env(safe-area-inset-bottom))!important;z-index:9}}
+.mission.expanded{background:rgba(224,216,195,.94)!important;color:#20251f!important;border-left-color:#8a7442!important;box-shadow:0 5px 22px rgba(0,0,0,.22)}
+.mission.expanded .eyebrow,.mission.expanded .mission-title,.mission.expanded .mission-chevron,.mission.expanded p,.mission.expanded .objective-distance{color:#252a23!important;text-shadow:none!important}
+.mission.expanded .objective-progress{background:rgba(37,42,35,.25)}
+.mission.expanded .objective-progress i{background:#8a6b2d}
+.map-card #world-map{touch-action:pan-x pan-y!important;display:block}
+.map-legend{position:relative;z-index:1;background:rgba(13,19,16,.68);padding:7px 9px;border:1px solid rgba(154,135,90,.35)}
