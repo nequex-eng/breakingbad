@@ -1396,7 +1396,7 @@ function animate(){
    // Shared clearance test for keyboard, joystick and click-to-move.
    // The player's collision radius is kept consistent around corners and narrow passages.
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.48&&Math.abs(z-oz)<rz+.48);
-   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?4.0:4.5));
+   const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||pedestrianBlockedByAnyVehicle(x,z);
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,next.z)&&!actorBlocked(next.x,next.z)){player.position.x=next.x;player.position.z=next.z;}
    else if(!autoTarget){if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;}
