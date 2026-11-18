@@ -265,7 +265,7 @@ const rvHeadlightMaterial=new THREE.MeshStandardMaterial({color:0xfff1c8,emissiv
 const rvHeadlights=[];
 for(const x of [-.78,.78]){
  const lens=box(playerCar,x,1.36,4.03,.34,.22,.08,rvHeadlightMaterial,false);
- const beam=new THREE.PointLight(0xffdca0,0,29,2);beam.position.set(x*2,2.72,8.1);playerCar.add(beam);rvHeadlights.push({beam,lens});
+ const beam=new THREE.PointLight(0xffdca0,0,29,2);beam.position.set(x,1.36,4.03);playerCar.add(beam);rvHeadlights.push({beam,lens});
 }
 car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
