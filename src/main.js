@@ -43,7 +43,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.12;
 app.prepend(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xe7d9c6, 0x5c5143, 2.0));
+const hemiLight=new THREE.HemisphereLight(0xe7d9c6, 0x5c5143, 2.0);scene.add(hemiLight);
 const sun = new THREE.DirectionalLight(0xffd4a1, 3.2);
 sun.position.set(-65, 95, 45);
 sun.castShadow = true;
@@ -1156,7 +1156,7 @@ function animate(){
   const daylight=THREE.MathUtils.clamp(Math.sin((gameClock-6)/12*Math.PI),0,1),night=1-daylight;
   scene.background.copy(nightSky).lerp(daySky,daylight);scene.fog.color.copy(nightFog).lerp(dayFog,daylight);scene.fog.density=.0082-daylight*.0014;
   sun.intensity=.16+daylight*3.05;sun.color.setRGB(1,.66+daylight*.17,.48+daylight*.17);sun.position.set(-65,18+daylight*78,45);
-  scene.children.find(o=>o.isHemisphereLight)?.intensity=.22+daylight*1.78;
+  hemiLight.intensity=.22+daylight*1.78;
   starField.material.opacity=THREE.MathUtils.smoothstep(night,.28,.82)*.92;starField.visible=starField.material.opacity>.015;
   for(const lamp of streetLights){lamp.light.intensity=night*2.1;lamp.bulb.material.emissiveIntensity=.12+night*2.4;}
   for(const headlight of rvHeadlights){headlight.beam.intensity=night*2.2;headlight.lens.material.emissiveIntensity=.15+night*2.8;}
