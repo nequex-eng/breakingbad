@@ -62,8 +62,8 @@ scene.add(sun);
 
 // Persistent in-world clock drives a complete Albuquerque day/night cycle.
 let gameClock=14.0,lightingRefresh=0;
-const nightSky=new THREE.Color(0x172235),daySky=new THREE.Color(0xb9a18a);
-const nightFog=new THREE.Color(0x202a38),dayFog=new THREE.Color(0xb9a18a);
+const daySky=new THREE.Color(0xb9a18a),duskSky=new THREE.Color(0xd28b68);
+const dayFog=new THREE.Color(0xb9a18a),duskFog=new THREE.Color(0xb98268);
 const skyStars=new THREE.BufferGeometry(),starPositions=[];
 for(let i=0;i<220;i++)starPositions.push((Math.random()-.5)*520,85+Math.random()*115,(Math.random()-.5)*520);
 skyStars.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));
@@ -293,7 +293,57 @@ for(const x of [-.78,.78]){
  const lens=box(playerCar,x,1.36,4.03,.34,.22,.08,rvHeadlightMaterial,false);
  const beam=new THREE.PointLight(0xffdca0,0,29,2);beam.position.set(x,1.36,4.03);playerCar.add(beam);rvHeadlights.push({beam,lens});
 }
-car(19,15,0x8d8d86,-.4); car(-104,35,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
+// Walter White's iconic olive-green Pontiac Aztek: split-level body, steep windshield, grey cladding and roof rack.
+function pontiacAztek(x,z,rotation=0){
+ const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=rotation;scene.add(g);vehicleRegistry.push(g);
+ const green=new THREE.MeshStandardMaterial({color:0x66734c,roughness:.68,metalness:.22});
+ const greenLight=mat(0x78865b),cladding=mat(0x555954),glass=new THREE.MeshStandardMaterial({color:0x24383b,roughness:.2,metalness:.18}),chrome=mat(0xb8b9ae),rubber=mat(0x202322),red=mat(0xb72d35);
+ // Low, angular two-piece body and distinctive short sloping hood.
+ box(g,0,.78,-.05,2.18,.72,4.55,green);
+ box(g,0,.56,-.05,2.28,.42,4.62,cladding);
+ box(g,0,1.13,1.34,2.08,.48,1.72,greenLight);
+ box(g,0,1.22,-1.38,2.1,.58,1.18,green);
+ // Raised cabin with a steep rake at the windshield and a tapered rear roofline.
+ box(g,0,1.72,-.32,1.88,.92,2.48,green);
+ const windshield=box(g,0,1.76,1.0,1.78,.78,.075,glass);windshield.rotation.x=-.34;
+ const rearGlass=box(g,0,1.72,-1.57,1.72,.72,.075,glass);rearGlass.rotation.x=.42;
+ for(const side of [-1,1]){
+  box(g,side*.954,1.73,-.32,.045,.62,1.02,glass);
+  box(g,side*.954,1.73,.56,.045,.57,.55,glass);
+  box(g,side*.954,1.73,-1.12,.045,.56,.48,glass);
+  box(g,side*1.12,.59,-.05,.07,.32,4.35,cladding);
+  box(g,side*1.105,1.1,-.15,.045,.07,2.75,chrome);
+  // Characteristic grey wheel-arch trim.
+  for(const wz of [-1.48,1.48]){
+   const tire=cylinder(g,side*1.08,.52,wz,.48,.48,.22,rubber,16);tire.rotation.z=Math.PI/2;
+   const hub=cylinder(g,side*1.205,.52,wz,.25,.25,.24,chrome,12);hub.rotation.z=Math.PI/2;
+   const arch=new THREE.Mesh(new THREE.TorusGeometry(.49,.075,7,18,Math.PI),cladding);arch.position.set(side*1.2,.52,wz);arch.rotation.y=Math.PI/2;arch.rotation.z=Math.PI;g.add(arch);
+  }
+  box(g,side*1.12,1.03,2.12,.2,.18,.1,mat(0xe8dfc2));
+  box(g,side*1.12,1.03,-2.31,.2,.2,.1,mat(0x9d3434));
+  box(g,side*1.11,1.25,-.05,.045,.12,.5,greenLight);
+ }
+ // Pontiac split grille, chrome surround and the red arrowhead marque.
+ box(g,0,.91,2.34,1.16,.34,.12,cladding);
+ box(g,0,.91,2.415,.92,.19,.025,mat(0x252a29));
+ for(let i=0;i<5;i++)box(g,-.35+i*.175,.91,2.435,.025,.14,.018,chrome,false);
+ const badgeShape=new THREE.Shape();badgeShape.moveTo(0,.13);badgeShape.lineTo(-.105,-.08);badgeShape.lineTo(.105,-.08);badgeShape.closePath();
+ const badge=new THREE.Mesh(new THREE.ShapeGeometry(badgeShape),red);badge.position.set(0,1.12,2.45);g.add(badge);
+ box(g,0,.72,2.42,.44,.045,.025,chrome);
+ box(g,0,.7,-2.34,1.25,.2,.1,cladding);
+ // Roof rails and compact luggage rack, a signature silhouette detail.
+ for(const side of [-1,1]){
+  const rail=box(g,side*.68,2.22,-.35,.07,.08,2.45,cladding);rail.rotation.x=0;
+  box(g,side*.68,2.22,.82,.08,.07,.18,chrome);
+  box(g,side*.68,2.22,-1.52,.08,.07,.18,chrome);
+ }
+ box(g,0,2.22,-.35,1.4,.06,.08,chrome);
+ // Subtle rear spoiler and roof step.
+ box(g,0,2.02,-1.88,1.72,.11,.28,cladding);
+ return g;
+}
+pontiacAztek(19,15,-.4);
+car(-104,35,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
  {root:car(-210,-4,0x87918d,Math.PI/2),direction:1,speed:12},
@@ -509,9 +559,12 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,38),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-// All devices derive the same in-world time from the wall clock.
- // One shared 20-minute cycle: 16 minutes of daylight, 4 minutes of night.
- function synchronizedGameClock(){return 14;}
+// Shared 20-minute cycle: 16 minutes of daylight, then a short golden-hour dusk. Night is removed.
+ function synchronizedGameClock(){
+  const cycleSeconds=1200,phase=((Date.now()/1000)%cycleSeconds+cycleSeconds)%cycleSeconds;
+  if(phase<960)return 6+(phase/960)*12;
+  return 18+((phase-960)/240)*2;
+ }
  gameClock=synchronizedGameClock();
 
  // Remote desert camp: physical scenery and an animated, fictional work area.
@@ -1222,17 +1275,23 @@ function animate(){
  if(performanceEnabled&&frameNow-performanceFrameTime<33.333)return;
  if(performanceEnabled)performanceFrameTime=frameNow;
  const dt=Math.min(clock.getDelta(),performanceEnabled?.05:.04);
- gameClock=14;
+ gameClock=synchronizedGameClock();
+ const dusk=THREE.MathUtils.smoothstep(gameClock,18,20);
  lightingRefresh+=dt;
- if(lightingRefresh>=.5){
+ if(lightingRefresh>=.12){
   lightingRefresh=0;
-  scene.background.copy(daySky);scene.fog.color.copy(dayFog);scene.fog.density=.0068;
-  sun.intensity=3.2;sun.color.setRGB(1,.83,.65);sun.position.set(-65,95,45);
-  hemiLight.intensity=2.0;
+  scene.background.copy(daySky).lerp(duskSky,dusk);
+  scene.fog.color.copy(dayFog).lerp(duskFog,dusk);
+  scene.fog.density=.0068+dusk*.0009;
+  sun.intensity=3.2-dusk*1.75;
+  sun.color.setRGB(1, .83-dusk*.24, .65-dusk*.29);
+  sun.position.set(-65,95-dusk*70,45);
+  hemiLight.intensity=2.0-dusk*.62;
   starField.visible=false;starField.material.opacity=0;
-  for(const lamp of streetLights){lamp.light.intensity=0;lamp.bulb.material.emissiveIntensity=.12;}
-  for(const headlight of rvHeadlights){headlight.beam.intensity=0;headlight.lens.material.emissiveIntensity=.15;}
-  const clockEl=$('game-clock');if(clockEl)clockEl.textContent='14:00 · DAY';
+  for(const lamp of streetLights){lamp.light.intensity=dusk*.65;lamp.bulb.material.emissiveIntensity=.12+dusk*.65;}
+  for(const headlight of rvHeadlights){headlight.beam.intensity=dusk*.4;headlight.lens.material.emissiveIntensity=.15+dusk*.35;}
+  const hour=Math.floor(gameClock),minute=Math.floor((gameClock-hour)*60);
+  const clockEl=$('game-clock');if(clockEl)clockEl.textContent=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+(dusk>.02?' · DUSK':' · DAY');
  }
  let walkingNow=false;
  uiRefreshClock+=dt;
