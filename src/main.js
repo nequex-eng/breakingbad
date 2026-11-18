@@ -3,6 +3,9 @@ import * as THREE from 'three';
 
 const app = document.querySelector('#app');
 const $ = (id) => document.getElementById(id);
+// iPads often report a desktop-sized viewport, so detect touch hardware rather than screen width.
+const hasTouchInput = (navigator.maxTouchPoints || 0) > 0 || (window.matchMedia?.('(pointer: coarse)').matches ?? false);
+document.documentElement.classList.toggle('touch-device',hasTouchInput);
 document.addEventListener('contextmenu',event=>{event.preventDefault();event.stopPropagation();},true);
 document.addEventListener('selectstart',event=>{event.preventDefault();event.stopPropagation();},true);
 // Suppress browser text-selection shortcuts without interfering with the game's Shift-to-run key.
@@ -740,12 +743,12 @@ function playFootstep(){
  const now=audioContext.currentTime;
  const source=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),gain=audioContext.createGain();
  source.buffer=noiseBuffer;filter.type='bandpass';filter.frequency.value=430;filter.Q.value=.8;
- gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.055,now+.012);gain.gain.exponentialRampToValueAtTime(.0001,now+.12);
- source.connect(filter);filter.connect(gain);gain.connect(audioMaster);source.start(now);source.stop(now+.13);
+ gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.12,now+.014);gain.gain.exponentialRampToValueAtTime(.0001,now+.16);
+ source.connect(filter);filter.connect(gain);gain.connect(audioMaster);source.start(now);source.stop(now+.17);
  const thud=audioContext.createOscillator(),thudGain=audioContext.createGain();
- thud.type='triangle';thud.frequency.setValueAtTime(92,now);thud.frequency.exponentialRampToValueAtTime(42,now+.09);
- thudGain.gain.setValueAtTime(.035,now);thudGain.gain.exponentialRampToValueAtTime(.0001,now+.1);
- thud.connect(thudGain);thudGain.connect(audioMaster);thud.start(now);thud.stop(now+.11);
+ thud.type='triangle';thud.frequency.setValueAtTime(105,now);thud.frequency.exponentialRampToValueAtTime(38,now+.11);
+ thudGain.gain.setValueAtTime(.075,now);thudGain.gain.exponentialRampToValueAtTime(.0001,now+.13);
+ thud.connect(thudGain);thudGain.connect(audioMaster);thud.start(now);thud.stop(now+.14);
 }
 function playBirdCall(){
  if(!soundEnabled||!audioContext)return;
@@ -1218,7 +1221,7 @@ function animate(){
   }
  }
  if(uiRefreshClock>=.12){updateActive();uiRefreshClock=0;}
- if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.42){playFootstep();footstepClock=0;}}else footstepClock=0;
+ if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.36){playFootstep();footstepClock=0;}}else footstepClock=0;
  if(soundEnabled&&audioContext&&engineOsc){const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);engineOsc.frequency.setTargetAtTime(48+Math.abs(driveSpeed)*3.2,audioContext.currentTime,.12);engineGain.gain.setTargetAtTime(driving?.045+speedRatio*.055:0,audioContext.currentTime,.18);engineHarmonicGain.gain.setTargetAtTime(driving?.012+speedRatio*.025:0,audioContext.currentTime,.18);roadNoiseGain.gain.setTargetAtTime(driving?speedRatio*.055:0,audioContext.currentTime,.2);}
  if(soundEnabled&&audioContext&&audioContext.state==='running'&&audioContext.currentTime>=nextBirdAt){playBirdCall();nextBirdAt=audioContext.currentTime+9+Math.random()*12;}
  if(deliveryState==='active'&&Date.now()>=deliveryDeadline){deliveryState='failed';deliveryDeadline=0;deliveryItem.root.visible=true;showToast('Delivery window expired. The package is back at the car wash.');saveGame();updateHUD();}
