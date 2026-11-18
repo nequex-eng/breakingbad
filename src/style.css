@@ -86,3 +86,11 @@ html.touch-device .sound-toggle{
  bottom:calc(128px + env(safe-area-inset-bottom))!important;
  z-index:12;
 }
+
+
+/* One-tap low-end-device profile, placed beside the sound control. */
+.performance-toggle{position:absolute;right:140px;bottom:24px;padding:7px 10px;border:1px solid rgba(213,196,153,.5);background:rgba(13,19,16,.84);color:#d9c58f;font:7px 'DM Mono';letter-spacing:1.1px;pointer-events:auto;cursor:pointer;white-space:nowrap;z-index:12}
+.performance-toggle[aria-pressed="true"]{color:#f4e8c8;border-color:#d4bd7d;background:rgba(65,78,55,.94)}
+@media(max-width:700px){.performance-toggle{right:118px;bottom:calc(22px + env(safe-area-inset-bottom));padding:6px 7px;font-size:6px;letter-spacing:.5px}}
+@media(min-width:701px) and (pointer:coarse){html.touch-device .performance-toggle{right:150px;bottom:calc(128px + env(safe-area-inset-bottom))}}
+@media(orientation:landscape) and (max-height:500px){.performance-toggle{bottom:18px!important;right:112px!important}}

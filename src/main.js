@@ -34,6 +34,14 @@ scene.fog = new THREE.FogExp2(0xb9a18a, 0.0068);
 
 const camera = new THREE.PerspectiveCamera(58, (window.visualViewport?.width||innerWidth) / (window.visualViewport?.height||innerHeight), 0.1, 650);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+let performanceEnabled=localStorage.getItem('abq-performance-mode')==='true';
+function applyPerformanceMode(){
+ renderer.setPixelRatio(performanceEnabled?Math.min(window.devicePixelRatio||1,.9):Math.min(window.devicePixelRatio||1,1.65));
+ renderer.shadowMap.enabled=!performanceEnabled;
+ renderer.shadowMap.needsUpdate=true;
+ const button=$('performance-toggle');
+ if(button){button.textContent=performanceEnabled?'SMOOTH MODE ON':'SMOOTH MODE OFF';button.setAttribute('aria-pressed',String(performanceEnabled));}
+}
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.65));
 renderer.setSize(window.visualViewport?.width||innerWidth, window.visualViewport?.height||innerHeight);
 renderer.shadowMap.enabled = true;
@@ -503,12 +511,7 @@ const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
 // All devices derive the same in-world time from the wall clock.
  // One shared 20-minute cycle: 16 minutes of daylight, 4 minutes of night.
- function synchronizedGameClock(){
-  const cycleSeconds=1200;
-  const phase=((Date.now()/1000)%cycleSeconds+cycleSeconds)%cycleSeconds;
-  if(phase<960)return 6+(phase/960)*12;
-  return (18+((phase-960)/240)*12)%24;
- }
+ function synchronizedGameClock(){return 14;}
  gameClock=synchronizedGameClock();
 
  // Remote desert camp: physical scenery and an animated, fictional work area.
@@ -822,6 +825,14 @@ async function toggleGameAudio(){
 $('sound-toggle').textContent=soundEnabled?'SOUND ON':'SOUND OFF';
 $('sound-toggle').setAttribute('aria-pressed',String(soundEnabled));
 $('sound-toggle').addEventListener('click',toggleGameAudio);
+function togglePerformanceMode(){
+ performanceEnabled=!performanceEnabled;
+ try{localStorage.setItem('abq-performance-mode',String(performanceEnabled));}catch{}
+ applyPerformanceMode();
+ showToast(performanceEnabled?'Smooth mode enabled · reduced rendering load.':'Smooth mode disabled · full visual quality restored.');
+}
+$('performance-toggle')?.addEventListener('click',togglePerformanceMode);
+applyPerformanceMode();
 renderer.domElement.addEventListener('pointerdown',unlockGameAudio,{passive:true});
 $('mobile-joystick').addEventListener('pointerdown',unlockGameAudio,{passive:true});
 function playFootstep(){
@@ -829,11 +840,11 @@ function playFootstep(){
  const now=audioContext.currentTime;
  const source=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),gain=audioContext.createGain();
  source.buffer=noiseBuffer;filter.type='bandpass';filter.frequency.value=430;filter.Q.value=.8;
- gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.12,now+.014);gain.gain.exponentialRampToValueAtTime(.0001,now+.16);
+ gain.gain.setValueAtTime(.0001,now);gain.gain.exponentialRampToValueAtTime(.18,now+.014);gain.gain.exponentialRampToValueAtTime(.0001,now+.16);
  source.connect(filter);filter.connect(gain);gain.connect(audioMaster);source.start(now);source.stop(now+.17);
  const thud=audioContext.createOscillator(),thudGain=audioContext.createGain();
  thud.type='triangle';thud.frequency.setValueAtTime(105,now);thud.frequency.exponentialRampToValueAtTime(38,now+.11);
- thudGain.gain.setValueAtTime(.075,now);thudGain.gain.exponentialRampToValueAtTime(.0001,now+.13);
+ thudGain.gain.setValueAtTime(.11,now);thudGain.gain.exponentialRampToValueAtTime(.0001,now+.13);
  thud.connect(thudGain);thudGain.connect(audioMaster);thud.start(now);thud.stop(now+.14);
 }
 function playBirdCall(){
@@ -1190,7 +1201,7 @@ function resize(){
  const width=Math.max(1,Math.round(viewport?.width||window.innerWidth||document.documentElement.clientWidth));
  const height=Math.max(1,Math.round(viewport?.height||window.innerHeight||document.documentElement.clientHeight));
  camera.aspect=width/height;camera.updateProjectionMatrix();
- renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.65));
+ renderer.setPixelRatio(performanceEnabled?Math.min(window.devicePixelRatio||1,.9):Math.min(window.devicePixelRatio||1,1.65));
  renderer.setSize(width,height,false);
  app.style.setProperty('--viewport-width',width+'px');
  app.style.setProperty('--viewport-height',height+'px');
@@ -1204,23 +1215,24 @@ window.visualViewport?.addEventListener('scroll',resize);
 window.addEventListener('pageshow',resize);
 resize();
 const clock=new THREE.Clock();
-let lastAutoSave=0,uiRefreshClock=0;
+let lastAutoSave=0,uiRefreshClock=0,performanceFrameTime=0;
 function animate(){
  requestAnimationFrame(animate);
- const dt=Math.min(clock.getDelta(),.04);
- gameClock=synchronizedGameClock(); // synchronized across desktop, phone and tabletutes
+ const frameNow=performance.now();
+ if(performanceEnabled&&frameNow-performanceFrameTime<33.333)return;
+ if(performanceEnabled)performanceFrameTime=frameNow;
+ const dt=Math.min(clock.getDelta(),performanceEnabled?.05:.04);
+ gameClock=14;
  lightingRefresh+=dt;
- if(lightingRefresh>=.25){
+ if(lightingRefresh>=.5){
   lightingRefresh=0;
-  const daylight=THREE.MathUtils.clamp(Math.sin((gameClock-6)/12*Math.PI),0,1),night=1-daylight;
-  scene.background.copy(nightSky).lerp(daySky,daylight);scene.fog.color.copy(nightFog).lerp(dayFog,daylight);scene.fog.density=.0082-daylight*.0014;
-  sun.intensity=.34+daylight*3.05;sun.color.setRGB(1,.66+daylight*.17,.48+daylight*.17);sun.position.set(-65,18+daylight*78,45);
-  hemiLight.intensity=.52+daylight*1.78;
-  starField.material.opacity=THREE.MathUtils.smoothstep(night,.28,.82)*.92;starField.visible=starField.material.opacity>.015;
-  for(const lamp of streetLights){lamp.light.intensity=night*5.2;lamp.bulb.material.emissiveIntensity=.12+night*3.8;}
-  for(const headlight of rvHeadlights){headlight.beam.intensity=night*4.8;headlight.lens.material.emissiveIntensity=.15+night*3.8;}
-  const hour=Math.floor(gameClock),minute=Math.floor((gameClock-hour)*60),period=hour>=6&&hour<18?'DAY':'NIGHT';
-  const clockEl=$('game-clock');if(clockEl)clockEl.textContent=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+' · '+period;
+  scene.background.copy(daySky);scene.fog.color.copy(dayFog);scene.fog.density=.0068;
+  sun.intensity=3.2;sun.color.setRGB(1,.83,.65);sun.position.set(-65,95,45);
+  hemiLight.intensity=2.0;
+  starField.visible=false;starField.material.opacity=0;
+  for(const lamp of streetLights){lamp.light.intensity=0;lamp.bulb.material.emissiveIntensity=.12;}
+  for(const headlight of rvHeadlights){headlight.beam.intensity=0;headlight.lens.material.emissiveIntensity=.15;}
+  const clockEl=$('game-clock');if(clockEl)clockEl.textContent='14:00 · DAY';
  }
  let walkingNow=false;
  uiRefreshClock+=dt;
@@ -1305,7 +1317,7 @@ function animate(){
    if(autoTarget){const desiredYaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z),angle=((desiredYaw-yaw+Math.PI*3)%(Math.PI*2))-Math.PI;yaw+=angle*(1-Math.exp(-dt*7.5));player.rotation.y=yaw;}
    const forward=autoTarget?1:manualForward;
    const side=autoTarget?0:manualSide;
-   const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
+   const speed=(keys.ShiftLeft||keys.ShiftRight?15.5:9.5)*dt;
    const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
    const right=new THREE.Vector3(-direction.z,0,direction.x);
    const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side*.12));
@@ -1326,7 +1338,7 @@ function animate(){
   }
  }
  if(uiRefreshClock>=.12){updateActive();uiRefreshClock=0;}
- if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.36){playFootstep();footstepClock=0;}}else footstepClock=0;
+ if(walkingNow&&!driving){footstepClock+=dt;if(footstepClock>.42){playFootstep();footstepClock=0;}}else footstepClock=0;
  if(soundEnabled&&audioContext&&engineOsc){const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);engineOsc.frequency.setTargetAtTime(48+Math.abs(driveSpeed)*3.2,audioContext.currentTime,.12);engineGain.gain.setTargetAtTime(driving?.045+speedRatio*.055:0,audioContext.currentTime,.18);engineHarmonicGain.gain.setTargetAtTime(driving?.012+speedRatio*.025:0,audioContext.currentTime,.18);roadNoiseGain.gain.setTargetAtTime(driving?speedRatio*.055:0,audioContext.currentTime,.2);}
  if(soundEnabled&&audioContext&&audioContext.state==='running'&&audioContext.currentTime>=nextBirdAt){playBirdCall();nextBirdAt=audioContext.currentTime+9+Math.random()*12;}
  if(deliveryState==='active'&&Date.now()>=deliveryDeadline){deliveryState='failed';deliveryDeadline=0;deliveryItem.root.visible=true;showToast('Delivery window expired. The package is back at the car wash.');saveGame();updateHUD();}
