@@ -97,6 +97,24 @@ for(let x=-220;x<=220;x+=55){
  streetLights.push({light,bulb});
 }
 
+// Additional street lamps around active locations. Their light pools keep sidewalks,
+// entrances and parking areas readable instead of illuminating only the central avenue.
+const districtLampPositions=[
+ [-91,6],[-65,43],[-42,28],[-17,-52],[20,-43],[49,-23],
+ [63,48],[91,48],[112,-88],[-169,-68],[-128,-58],[-190,130],
+ [145,22],[175,-18],[190,65]
+];
+for(const [x,z] of districtLampPositions){
+ const pole=new THREE.Group();pole.position.set(x,0,z);scene.add(pole);
+ cylinder(pole,0,2.65,0,.09,.12,5.3,lampMetal,8);
+ const arm=box(pole,.55,5.15,0,1.15,.1,.12,lampMetal);arm.rotation.z=-.08;
+ box(pole,1.03,5.02,0,.48,.13,.36,lampMetal);
+ const bulb=box(pole,1.03,4.91,0,.3,.07,.24,lampBulb,false);
+ const light=new THREE.PointLight(0xffc47a,0,42,1.7);
+ light.position.set(x+1.03,4.72,z);light.castShadow=false;scene.add(light);
+ streetLights.push({light,bulb});
+}
+
 // Roads and sidewalks
 box(scene,0,0.005,0,520,0.02,15,materials.asphalt,false);
 box(scene,0,0.01,-15,520,0.03,2.2,materials.sidewalk,false);
@@ -1188,11 +1206,11 @@ function animate(){
   lightingRefresh=0;
   const daylight=THREE.MathUtils.clamp(Math.sin((gameClock-6)/12*Math.PI),0,1),night=1-daylight;
   scene.background.copy(nightSky).lerp(daySky,daylight);scene.fog.color.copy(nightFog).lerp(dayFog,daylight);scene.fog.density=.0082-daylight*.0014;
-  sun.intensity=.16+daylight*3.05;sun.color.setRGB(1,.66+daylight*.17,.48+daylight*.17);sun.position.set(-65,18+daylight*78,45);
-  hemiLight.intensity=.22+daylight*1.78;
+  sun.intensity=.34+daylight*3.05;sun.color.setRGB(1,.66+daylight*.17,.48+daylight*.17);sun.position.set(-65,18+daylight*78,45);
+  hemiLight.intensity=.52+daylight*1.78;
   starField.material.opacity=THREE.MathUtils.smoothstep(night,.28,.82)*.92;starField.visible=starField.material.opacity>.015;
-  for(const lamp of streetLights){lamp.light.intensity=night*2.1;lamp.bulb.material.emissiveIntensity=.12+night*2.4;}
-  for(const headlight of rvHeadlights){headlight.beam.intensity=night*2.2;headlight.lens.material.emissiveIntensity=.15+night*2.8;}
+  for(const lamp of streetLights){lamp.light.intensity=night*5.2;lamp.bulb.material.emissiveIntensity=.12+night*3.8;}
+  for(const headlight of rvHeadlights){headlight.beam.intensity=night*4.8;headlight.lens.material.emissiveIntensity=.15+night*3.8;}
   const hour=Math.floor(gameClock),minute=Math.floor((gameClock-hour)*60),period=hour>=6&&hour<18?'DAY':'NIGHT';
   const clockEl=$('game-clock');if(clockEl)clockEl.textContent=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+' · '+period;
  }
@@ -1282,7 +1300,7 @@ function animate(){
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
    const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
    const right=new THREE.Vector3(-direction.z,0,direction.x);
-   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
+   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side*.42));
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.55&&Math.abs(z-oz)<rz+.55);
