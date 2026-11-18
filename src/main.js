@@ -335,7 +335,7 @@ function separatePedestriansFromAllVehicles(){
    if(len<.001){nx=1;nz=0;len=1;}
    const push=.86/len,outX=lx+nx*push,outZ=lz+nz*push;
    const candidateX=vehicle.position.x+outX*c+outZ*s,candidateZ=vehicle.position.z-outX*s+outZ*c;
-   if(!pedestrianBlockedByWorld(candidateX,candidateZ)){npc.root.position.x=candidateX;npc.root.position.z=candidateZ;}
+   if(!pedestrianBlockedByWorld(candidateX,candidateZ)&&!pedestrianBlockedByCrowd(candidateX,candidateZ,npc)){npc.root.position.x=candidateX;npc.root.position.z=candidateZ;}
   }
  }
 }
@@ -343,8 +343,11 @@ function pedestrianBlockedByWorld(x,z){
  // Keep the whole pedestrian body clear of every building footprint.
  return walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.62&&Math.abs(z-oz)<rz+.62);
 }
+function pedestrianBlockedByCrowd(x,z,npc){
+ return pedestrianActors.some(other=>other!==npc&&other.root.visible&&Math.hypot(x-other.root.position.x,z-other.root.position.z)<.92);
+}
 function movePedestrianSafely(npc,x,z){
- const blocked=(px,pz)=>pedestrianBlockedByWorld(px,pz)||pedestrianBlockedByAnyVehicle(px,pz);
+ const blocked=(px,pz)=>pedestrianBlockedByWorld(px,pz)||pedestrianBlockedByAnyVehicle(px,pz)||pedestrianBlockedByCrowd(px,pz,npc);
  if(!blocked(x,z)){npc.root.position.x=x;npc.root.position.z=z;return true;}
  const dx=x-npc.root.position.x,dz=z-npc.root.position.z,len=Math.hypot(dx,dz)||1;
  // Try a short sidestep first, then a smaller step backwards; never push an NPC into a wall.
@@ -653,12 +656,12 @@ const walkObstacles=[
 ];
 // Startup placement audit: if a character is ever authored inside a wall, move it to the nearest clear point.
 for(const npc of pedestrianActors){
- if(!pedestrianBlockedByWorld(npc.root.position.x,npc.root.position.z))continue;
+ if(!pedestrianBlockedByWorld(npc.root.position.x,npc.root.position.z)&&!pedestrianBlockedByCrowd(npc.root.position.x,npc.root.position.z,npc))continue;
  const origin=npc.root.position.clone();let placed=false;
  for(let radius=.8;radius<=12&&!placed;radius+=.8){
   for(let i=0;i<24;i++){
    const angle=i*Math.PI/12,x=origin.x+Math.cos(angle)*radius,z=origin.z+Math.sin(angle)*radius;
-   if(!pedestrianBlockedByWorld(x,z)&&!pedestrianBlockedByAnyVehicle(x,z)){npc.root.position.set(x,0,z);npc.home?.set(x,0,z);placed=true;break;}
+   if(!pedestrianBlockedByWorld(x,z)&&!pedestrianBlockedByAnyVehicle(x,z)&&!pedestrianBlockedByCrowd(x,z,npc)){npc.root.position.set(x,0,z);npc.home?.set(x,0,z);placed=true;break;}
   }
  }
  if(!placed)console.warn('No clear initial spawn found for pedestrian',npc);
