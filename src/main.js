@@ -290,14 +290,19 @@ function addParkedCarBlocker(x,z,rotation){
  const c=Math.abs(Math.cos(rotation)),s=Math.abs(Math.sin(rotation));
  vehicleBlockers.push({x,z,halfX:1.45*c+2.65*s,halfZ:1.45*s+2.65*c});
 }
-const VEHICLE_COLLISION_RADIUS=4.25;
-// Conservative circle-vs-box collision covers the whole sedan footprint at every steering angle.
-function vehicleOverlapsBox(position,b,vehicleRoot=null){
- const closestX=THREE.MathUtils.clamp(position.x,b.x-b.halfX,b.x+b.halfX);
- const closestZ=THREE.MathUtils.clamp(position.z,b.z-b.halfZ,b.z+b.halfZ);
- const dx=position.x-closestX,dz=position.z-closestZ;
- const radius=vehicleRoot===playerCar?8.35:VEHICLE_COLLISION_RADIUS;
- return dx*dx+dz*dz<radius*radius;
+const VEHICLE_COLLISION_MARGIN=.28;
+// Oriented vehicle rectangle vs axis-aligned building rectangle (SAT).
+// Unlike the old 8.35m RV circle, this tests the actual vehicle footprint and heading.
+function vehicleOverlapsBox(position,b,vehicleRoot=null,rotation=vehicleRoot?.rotation.y||0){
+ const isRV=vehicleRoot===playerCar,halfWidth=isRV?2.85:1.58,halfLength=isRV?7.85:2.88;
+ const c=Math.cos(rotation),s=Math.sin(rotation),dx=b.x-position.x,dz=b.z-position.z;
+ const axes=[[c,-s],[s,c],[1,0],[0,1]];
+ for(const [ax,az] of axes){
+  const vehicleRadius=halfWidth*Math.abs(ax*c-az*s)+halfLength*Math.abs(ax*s+az*c);
+  const obstacleRadius=b.halfX*Math.abs(ax)+b.halfZ*Math.abs(az);
+  if(Math.abs(dx*ax+dz*az)>vehicleRadius+obstacleRadius+VEHICLE_COLLISION_MARGIN)return false;
+ }
+ return true;
 }
 function vehicleOverlapsPedestrian(position,rotation,npc,vehicleRoot=null){
  const dx=npc.root.position.x-position.x,dz=npc.root.position.z-position.z;
@@ -332,12 +337,18 @@ function separatePedestriansFromAllVehicles(){
   }
  }
 }
+function pedestrianBlockedByWorld(x,z){
+ // Keep the whole pedestrian body clear of every building footprint.
+ return walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.62&&Math.abs(z-oz)<rz+.62);
+}
 function movePedestrianSafely(npc,x,z){
- if(!pedestrianBlockedByAnyVehicle(x,z)){npc.root.position.x=x;npc.root.position.z=z;return true;}
+ const blocked=(px,pz)=>pedestrianBlockedByWorld(px,pz)||pedestrianBlockedByAnyVehicle(px,pz);
+ if(!blocked(x,z)){npc.root.position.x=x;npc.root.position.z=z;return true;}
  const dx=x-npc.root.position.x,dz=z-npc.root.position.z,len=Math.hypot(dx,dz)||1;
- for(const sign of [1,-1]){
-  const sx=npc.root.position.x+(-dz/len)*sign*.85,sz=npc.root.position.z+(dx/len)*sign*.85;
-  if(!pedestrianBlockedByAnyVehicle(sx,sz)){npc.root.position.x=sx;npc.root.position.z=sz;return true;}
+ // Try a short sidestep first, then a smaller step backwards; never push an NPC into a wall.
+ for(const amount of [.9,.55])for(const sign of [1,-1]){
+  const sx=npc.root.position.x+(-dz/len)*sign*amount,sz=npc.root.position.z+(dx/len)*sign*amount;
+  if(!blocked(sx,sz)){npc.root.position.x=sx;npc.root.position.z=sz;return true;}
  }
  return false;
 }
@@ -442,8 +453,8 @@ const gasContactNPC=makeNPC(73,43,0x57445e,0x30323c,0x9d7358);gasContactNPC.root
 const motelNPC=makeNPC(-132,-65,0x6d5a48,0x343a43,0xb58b6b);motelNPC.root.rotation.y=Math.PI;
 const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
 ambientNPCs.forEach((npc,i)=>{npc.home=npc.root.position.clone();npc.wanderPhase=i*2.15;});
-const witnessNPC=makeNPC(-94,29,0x8a7462,0x343a43,0xb98e6e);
-const courierNPC=makeNPC(-74,29,0x6d5146,0x292f38,0x9b745b);
+const witnessNPC=makeNPC(-97,34,0x8a7462,0x343a43,0xb98e6e);
+const courierNPC=makeNPC(-74,34,0x6d5146,0x292f38,0x9b745b);
 const driverNPC=makeNPC(69,43,0x4f6970,0x303841,0x9b745b);
 const motelClerkNPC=makeNPC(-137,-66,0x70634f,0x343a43,0xb98e6e);
 const warehouseArchivistNPC=makeNPC(108,-51,0x706b58,0x343a43,0x9c775d);
@@ -632,10 +643,17 @@ function updateObjectiveDistance(){
 
 const keys={};
 let clickMovePath=[];
-const walkObstacles=[[-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],[36,28,15.5,9.7],[-82,22,13,8.5],[100,-70,20,16],[78,24,10,7],[-145,-76,28.5,7.5],[19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5]];
+const walkObstacles=[
+ // Houses: footprint plus a pedestrian clearance margin.
+ [-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
+ // Main landmarks: car wash, diner, warehouse, gas station and motel.
+ [36,28,15.5,9.7],[-82,22,13,8.5],[100,-70,20,16],[78,24,10,7],[-145,-76,28.5,7.5],
+ // Parked cars and fixed roadside fixtures.
+ [19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5]
+];
 function buildClickMovePath(destination){
  const step=5,size=97,min=-240,index=(x,z)=>{const gx=Math.max(0,Math.min(size-1,Math.round((x-min)/step))),gz=Math.max(0,Math.min(size-1,Math.round((z-min)/step)));return gz*size+gx;};
- const blocked=(i)=>{const x=min+(i%size)*step,z=min+Math.floor(i/size)*step;return walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.2&&Math.abs(z-oz)<rz+1.2);};
+ const blocked=(i)=>{const x=min+(i%size)*step,z=min+Math.floor(i/size)*step;return walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.45&&Math.abs(z-oz)<rz+1.45);};
  const start=index(player.position.x,player.position.z),goal=index(destination.x,destination.z);
  const parent=new Int32Array(size*size);parent.fill(-1);const queue=new Int32Array(size*size);let read=0,write=0;queue[write++]=start;parent[start]=start;
  let found=-1;
@@ -647,7 +665,7 @@ function buildClickMovePath(destination){
  const raw=[];for(let n=found;n!==start;n=parent[n])raw.push(new THREE.Vector3(min+(n%size)*step,0,min+Math.floor(n/size)*step));
  raw.reverse();
  // Pull the grid route into diagonal segments and round corners for natural steering.
- const clearSegment=(a,b)=>{const samples=Math.ceil(a.distanceTo(b)/1.2);for(let k=1;k<samples;k++){const t=k/samples,x=THREE.MathUtils.lerp(a.x,b.x,t),z=THREE.MathUtils.lerp(a.z,b.z,t);if(walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.9&&Math.abs(z-oz)<rz+.9))return false;}return true;};
+ const clearSegment=(a,b)=>{const samples=Math.ceil(a.distanceTo(b)/1.2);for(let k=1;k<samples;k++){const t=k/samples,x=THREE.MathUtils.lerp(a.x,b.x,t),z=THREE.MathUtils.lerp(a.z,b.z,t);if(walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.15&&Math.abs(z-oz)<rz+1.15))return false;}return true;};
  const anchors=[new THREE.Vector3(player.position.x,0,player.position.z)];let cursor=0;
  while(cursor<raw.length){let farthest=cursor;for(let j=cursor;j<raw.length;j++){if(clearSegment(anchors[anchors.length-1],raw[j]))farthest=j;else break;}anchors.push(raw[farthest]);cursor=farthest+1;}
  anchors.push(new THREE.Vector3(destination.x,0,destination.z));const route=[];
@@ -1204,7 +1222,9 @@ function animate(){
   separatePedestriansFromAllVehicles();
   if(driving){
    const throttle=THREE.MathUtils.clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY,-1,1);
-   const steering=THREE.MathUtils.clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX,-1,1);
+   const steeringInput=THREE.MathUtils.clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX,-1,1);
+    // Softer steering curve prevents tiny thumb movements from snapping the long RV around.
+    const steering=Math.sign(steeringInput)*Math.pow(Math.abs(steeringInput),1.35);
    const effectiveThrottle=(fuel<=0&&throttle>0)?0:throttle;
    driveSpeed=THREE.MathUtils.clamp(driveSpeed+effectiveThrottle*15*dt,-10,24);
    if(fuel<=0&&driveSpeed>0)driveSpeed=Math.max(0,driveSpeed-18*dt);
@@ -1212,7 +1232,9 @@ function animate(){
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
    const oldRotation=playerCar.rotation.y;
-   const steeredRotation=oldRotation-steering*1.45*dt*(driveSpeed>=0?1:-1);
+   const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);
+    const steeringRate=(.12+.50*speedRatio);
+    const steeredRotation=oldRotation-steering*steeringRate*dt*(driveSpeed>=0?1:-1);
    if(!vehicleCollisionAt(playerCar.position,steeredRotation,playerCar))playerCar.rotation.y=steeredRotation;
    const oldPosition=playerCar.position.clone();
    const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
@@ -1248,7 +1270,7 @@ function animate(){
    const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side));
   if(move.lengthSq()>0){
    move.normalize();const next=player.position.clone().addScaledVector(move,speed);
-   const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
+   const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.55&&Math.abs(z-oz)<rz+.55);
    const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?4.0:4.5));
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,next.z)&&!actorBlocked(next.x,next.z)){player.position.x=next.x;player.position.z=next.z;}
