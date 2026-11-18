@@ -74,3 +74,7 @@ html.touch-device .mobile-interact{touch-action:none}
  html.touch-device .mobile-joystick .joystick-knob{width:58px;height:58px}
  html.touch-device .mobile-controls .mobile-interact{right:34px;bottom:38px;width:76px;height:76px}
 }
+
+/* Albuquerque's in-world local time. */
+.game-clock{position:absolute;left:28px;top:76px;font-size:8px;letter-spacing:1.4px;color:#e3d2a9;text-shadow:0 1px 8px #000;pointer-events:none}
+@media(max-width:700px){.game-clock{left:14px;top:68px;font-size:7px;letter-spacing:1px}}

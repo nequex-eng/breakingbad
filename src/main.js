@@ -52,6 +52,16 @@ sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
 sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
 scene.add(sun);
 
+// Persistent in-world clock drives a complete Albuquerque day/night cycle.
+let gameClock=14.0,lightingRefresh=0;
+const nightSky=new THREE.Color(0x172235),daySky=new THREE.Color(0xb9a18a);
+const nightFog=new THREE.Color(0x202a38),dayFog=new THREE.Color(0xb9a18a);
+const skyStars=new THREE.BufferGeometry(),starPositions=[];
+for(let i=0;i<220;i++)starPositions.push((Math.random()-.5)*520,85+Math.random()*115,(Math.random()-.5)*520);
+skyStars.setAttribute('position',new THREE.Float32BufferAttribute(starPositions,3));
+const starField=new THREE.Points(skyStars,new THREE.PointsMaterial({color:0xe4e8f0,size:1.25,sizeAttenuation:false,transparent:true,opacity:0,depthWrite:false}));starField.frustumCulled=false;scene.add(starField);
+const streetLights=[];
+
 const mat = (color, roughness=0.9) => new THREE.MeshStandardMaterial({ color, roughness });
 const materials = {
   asphalt: mat(0x454541), sand: mat(0xb69c78), sidewalk: mat(0x9b9182),
@@ -73,6 +83,18 @@ function box(parent, x,y,z, sx,sy,sz, material, cast=true) {
 function cylinder(parent,x,y,z,r1,r2,h,material,segments=10) {
  const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,segments),material);
  m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m;
+}
+
+// Warm sodium street lamps along the avenue; no shadow maps keeps the lights inexpensive.
+const lampMetal=mat(0x333735),lampBulb=new THREE.MeshStandardMaterial({color:0xffd49a,emissive:0xffa84d,emissiveIntensity:.12,roughness:.35});
+for(let x=-220;x<=220;x+=55){
+ const pole=new THREE.Group();pole.position.set(x,0,-13.2);scene.add(pole);
+ cylinder(pole,0,3.1,0,.12,.16,6.2,lampMetal,8);
+ const arm=box(pole,.72,6.05,0,1.55,.12,.14,lampMetal);arm.rotation.z=-.08;
+ box(pole,1.35,5.92,0,.62,.16,.5,lampMetal);
+ const bulb=box(pole,1.35,5.79,0,.38,.08,.3,lampBulb,false);
+ const light=new THREE.PointLight(0xffc47a,0,34,2);light.position.set(x+1.35,5.55,-13.2);light.castShadow=false;scene.add(light);
+ streetLights.push({light,bulb});
 }
 
 // Roads and sidewalks
@@ -238,6 +260,13 @@ box(playerCar,0,3.22,-.1,.72,.12,.72,rvChrome);
 const rvRoofAntenna=cylinder(playerCar,.72,3.23,-2.8,.035,.035,.55,rvChrome,6);rvRoofAntenna.rotation.z=.2;
 box(playerCar,0,.35,-4.0,1.5,.38,.12,rvLower);
 playerCar.scale.setScalar(2);
+// Distinct RV headlamps illuminate the road after sunset.
+const rvHeadlightMaterial=new THREE.MeshStandardMaterial({color:0xfff1c8,emissive:0xffd98a,emissiveIntensity:.15,roughness:.25});
+const rvHeadlights=[];
+for(const x of [-.78,.78]){
+ const lens=box(playerCar,x,1.36,4.03,.34,.22,.08,rvHeadlightMaterial,false);
+ const beam=new THREE.PointLight(0xffdca0,0,29,2);beam.position.set(x*2,2.72,8.1);playerCar.add(beam);rvHeadlights.push({beam,lens});
+}
 car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
@@ -438,6 +467,7 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,38),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
+gameClock=Number.isFinite(saved.gameClock)?((saved.gameClock%24)+24)%24:14;
 
  // Remote desert camp: physical scenery and an animated, fictional work area.
  const desertCamp=new THREE.Group();desertCamp.position.set(-190,0,165);scene.add(desertCamp);
@@ -554,7 +584,7 @@ const salvageItems=[
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
 let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI;
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({gameClock,cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
@@ -1119,6 +1149,20 @@ let lastAutoSave=0,uiRefreshClock=0;
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
+ gameClock=(gameClock+dt*.02)%24; // one complete in-game day every 20 real minutes
+ lightingRefresh+=dt;
+ if(lightingRefresh>=.25){
+  lightingRefresh=0;
+  const daylight=THREE.MathUtils.clamp(Math.sin((gameClock-6)/12*Math.PI),0,1),night=1-daylight;
+  scene.background.copy(nightSky).lerp(daySky,daylight);scene.fog.color.copy(nightFog).lerp(dayFog,daylight);scene.fog.density=.0082-daylight*.0014;
+  sun.intensity=.16+daylight*3.05;sun.color.setRGB(1,.66+daylight*.17,.48+daylight*.17);sun.position.set(-65,18+daylight*78,45);
+  scene.children.find(o=>o.isHemisphereLight)?.intensity=.22+daylight*1.78;
+  starField.material.opacity=THREE.MathUtils.smoothstep(night,.28,.82)*.92;starField.visible=starField.material.opacity>.015;
+  for(const lamp of streetLights){lamp.light.intensity=night*2.1;lamp.bulb.material.emissiveIntensity=.12+night*2.4;}
+  for(const headlight of rvHeadlights){headlight.beam.intensity=night*2.2;headlight.lens.material.emissiveIntensity=.15+night*2.8;}
+  const hour=Math.floor(gameClock),minute=Math.floor((gameClock-hour)*60),period=hour>=6&&hour<18?'DAY':'NIGHT';
+  const clockEl=$('game-clock');if(clockEl)clockEl.textContent=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0')+' · '+period;
+ }
  let walkingNow=false;
  uiRefreshClock+=dt;
  if(!dialogOpen&&!mapOpen){
