@@ -139,9 +139,9 @@ box(scene,93,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 box(scene,107,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 for(let z=-44;z<=-8;z+=18)box(scene,100,.03,z,.14,.03,7,materials.yellow,false);
 // Dedicated access road connects the restaurant parking lot to the main avenue.
-box(scene,150,.008,27,12,.028,54,materials.asphalt,false);
-box(scene,143.8,.014,27,1.5,.035,54,materials.sidewalk,false);box(scene,156.2,.014,27,1.5,.035,54,materials.sidewalk,false);
-for(let z=4;z<=48;z+=18)box(scene,150,.035,z,.14,.03,7,materials.yellow,false);
+box(scene,150,.008,35,12,.028,70,materials.asphalt,false);
+box(scene,143.8,.014,35,1.5,.035,70,materials.sidewalk,false);box(scene,156.2,.014,35,1.5,.035,70,materials.sidewalk,false);
+for(let z=4;z<=64;z+=18)box(scene,150,.035,z,.14,.03,7,materials.yellow,false);
 box(scene,100,.012,-50,24,.025,10,materials.asphalt,false);
  // Dust road from the remote RV camp to the Route 66 access road.
  const desertTrack=mat(0x927b5d),trackRuts=mat(0x796448),trackEdge=mat(0xa08b6d);
@@ -369,6 +369,11 @@ for(const x of [-9.4,-7.7,-6]){
 box(losPollos,8,1.35,-7.2,5.5,1.8,1.8,polloWood);
 box(losPollos,8,2.15,-7.2,5.35,.12,1.7,materials.glass);
 for(const x of [6.5,8,9.5]){const chicken=new THREE.Mesh(new THREE.SphereGeometry(.36,10,8),mat(0xb97835));chicken.scale.set(1.2,.58,.8);chicken.position.set(x,2.05,-7.15);losPollos.add(chicken);}
+const polloFoodTray=new THREE.Group();polloFoodTray.position.set(9,2.36,-7.15);losPollos.add(polloFoodTray);
+box(polloFoodTray,0,0,0,1.45,.12,1.05,mat(0xddd5c3),false);
+for(const x of [-.38,0,.38]){const piece=new THREE.Mesh(new THREE.SphereGeometry(.24,9,7),mat(0xb97835));piece.scale.set(1.15,.58,.8);piece.position.set(x,.22,0);polloFoodTray.add(piece);}
+const polloServeRing=new THREE.Mesh(new THREE.TorusGeometry(1.15,.09,7,28),new THREE.MeshBasicMaterial({color:0xe6bd61,emissive:0x5d4215,transparent:true,opacity:.9}));
+polloServeRing.rotation.x=Math.PI/2;polloServeRing.position.set(-11,.16,-4);losPollos.add(polloServeRing);
 // Roadside pylon sign, visible from the avenue.
 const polloPylon=new THREE.Group();polloPylon.position.set(172,0,49);scene.add(polloPylon);
 box(polloPylon,0,3.3,0,.34,6.6,.38,mat(0x5a5142));
@@ -1716,6 +1721,7 @@ function animate(){
   }
  }
  const animTime=performance.now(),swing=walkingNow&&!driving?Math.sin(animTime*.008)*.34:0;
+ polloFoodTray.visible=polloState==='ready';polloServeRing.visible=polloState==='carried';polloServeRing.rotation.z+=dt*.45;
   cookStations.forEach((station,i)=>{station.ring.rotation.z+=dt*(i%2?-.55:.55);if(station.marker.visible)station.marker.position.y=2.85+Math.sin(animTime*.003+i)*.13;});
   const cookingNow=cookState==='cooking';cookGlow.material.opacity=cookingNow?.72:.18;cookGlow.scale.setScalar(cookingNow?1.08+Math.sin(animTime*.012)*.12:1);campLight.intensity=cookingNow?1.35:0;
   vaporPuffs.forEach((p,i)=>{p.material.opacity=cookingNow?.22:0;p.position.y=2.1+i*.34+(cookingNow?((animTime*.00055+i*.23)%1)*.75:0);p.scale.setScalar(cookingNow?(.75+Math.sin(animTime*.004+i)*.25):.01);});
