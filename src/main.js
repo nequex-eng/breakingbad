@@ -424,14 +424,17 @@ function pedestrianBlockedByCrowd(x,z,npc){
 }
 function movePedestrianSafely(npc,x,z){
  const blocked=(px,pz)=>pedestrianBlockedByWorld(px,pz)||pedestrianBlockedByAnyVehicle(px,pz)||pedestrianBlockedByCrowd(px,pz,npc);
- if(!blocked(x,z)){npc.root.position.x=x;npc.root.position.z=z;return true;}
- const dx=x-npc.root.position.x,dz=z-npc.root.position.z,len=Math.hypot(dx,dz)||1;
- // Try a short sidestep first, then a smaller step backwards; never push an NPC into a wall.
- for(const amount of [.9,.55])for(const sign of [1,-1]){
-  const sx=npc.root.position.x+(-dz/len)*sign*amount,sz=npc.root.position.z+(dx/len)*sign*amount;
-  if(!blocked(sx,sz)){npc.root.position.x=sx;npc.root.position.z=sz;return true;}
+ const dx=x-npc.root.position.x,dz=z-npc.root.position.z,distance=Math.hypot(dx,dz);
+ if(distance<.0001)return false;
+ // Advance in short swept steps; do not teleport sideways when an obstacle is reached.
+ const steps=Math.max(1,Math.ceil(distance/.22)),startX=npc.root.position.x,startZ=npc.root.position.z;
+ let moved=false;
+ for(let i=1;i<=steps;i++){
+  const t=i/steps,px=startX+dx*t,pz=startZ+dz*t;
+  if(blocked(px,pz))break;
+  npc.root.position.x=px;npc.root.position.z=pz;moved=true;
  }
- return false;
+ return moved;
 }
 function vehicleOverlapsVehicle(position,rotation,otherRoot,movingRoot=null){
  const dx=otherRoot.position.x-position.x,dz=otherRoot.position.z-position.z;
@@ -519,12 +522,20 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
   const eye=new THREE.Mesh(new THREE.SphereGeometry(.047,8,6),materials.eyeWhite);eye.position.set(side*.105,2.15,.274);root.add(eye);
   const pupil=new THREE.Mesh(new THREE.SphereGeometry(.022,8,6),materials.pupil);pupil.position.set(side*.105,2.15,.315);root.add(pupil);
   const ear=new THREE.Mesh(new THREE.SphereGeometry(.065,8,6),faceSkin);ear.position.set(side*.3,2.1,0);root.add(ear);
-  box(root,side*.19,.075,.12,.32,.15,.5,materials.shoe);
  }
  const nose=new THREE.Mesh(new THREE.ConeGeometry(.055,.12,6),faceSkin);nose.position.set(0,2.08,.31);nose.rotation.x=Math.PI/2;root.add(nose);
+ // Limb pivots are placed at real shoulder/hip joints so walking swings the legs
+ // instead of rotating whole cylinders around the character's feet.
  const arms=[],legs=[];
- for(const side of [-1,1]){const arm=cylinder(root,side*.43,1.35,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;arms.push(arm);legs.push(cylinder(root,side*.19,.43,0,.15,.18,.75,mat(pants),8));}
- return {root,phase:Math.random()*6,arms,legs};
+ for(const side of [-1,1]){
+  const armPivot=new THREE.Group();armPivot.position.set(side*.43,1.72,0);root.add(armPivot);
+  const arm=cylinder(armPivot,0,-.39,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;arms.push(armPivot);
+  const legPivot=new THREE.Group();legPivot.position.set(side*.19,.78,0);root.add(legPivot);
+  cylinder(legPivot,0,-.375,0,.15,.18,.75,mat(pants),8);
+  box(legPivot,0,-.72,.12,.32,.15,.5,materials.shoe);
+  legs.push(legPivot);
+ }
+ return {root,phase:Math.random()*6,arms,legs,walkPhase:Math.random()*Math.PI*2};
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,32,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
@@ -1382,13 +1393,26 @@ function animate(){
    const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side*.12));
   if(move.lengthSq()>0){
    if(move.lengthSq()>1)move.normalize();const next=player.position.clone().addScaledVector(move,speed);
-   const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.55&&Math.abs(z-oz)<rz+.55);
+   // Shared clearance test for keyboard, joystick and click-to-move.
+   // The player's collision radius is kept consistent around corners and narrow passages.
+   const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.48&&Math.abs(z-oz)<rz+.48);
    const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?4.0:4.5));
    const oldX=player.position.x,oldZ=player.position.z;
    if(!isBlocked(next.x,next.z)&&!actorBlocked(next.x,next.z)){player.position.x=next.x;player.position.z=next.z;}
    else if(!autoTarget){if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;}
    else{const slideA=new THREE.Vector3(oldX+(next.z-oldZ),0,oldZ),slideB=new THREE.Vector3(oldX,0,oldZ+(next.x-oldX)),valid=p=>!isBlocked(p.x,p.z)&&!actorBlocked(p.x,p.z);if(valid(slideA))player.position.copy(slideA);else if(valid(slideB))player.position.copy(slideB);}
-   if(player.position.x!==oldX||player.position.z!==oldZ){if(!autoTarget){const face=Math.atan2(move.x,move.z),da=((face-yaw+Math.PI*3)%(Math.PI*2))-Math.PI;yaw+=da*(1-Math.exp(-dt*12));player.rotation.y=yaw;}walkingNow=true;}
+   if(player.position.x!==oldX||player.position.z!==oldZ){
+    // Keep the character's facing direction while backing up; turning 180° every
+    // frame made S/joystick-down oscillate instead of moving straight backwards.
+    if(!autoTarget&&manualForward>=0&&Math.abs(manualSide)>.15){
+     const face=Math.atan2(move.x,move.z),da=((face-yaw+Math.PI*3)%(Math.PI*2))-Math.PI;
+     yaw+=da*(1-Math.exp(-dt*8));player.rotation.y=yaw;
+    }else if(!autoTarget&&manualForward>0&&Math.abs(manualSide)<=.15){
+     const face=Math.atan2(move.x,move.z),da=((face-yaw+Math.PI*3)%(Math.PI*2))-Math.PI;
+     yaw+=da*(1-Math.exp(-dt*8));player.rotation.y=yaw;
+    }
+    walkingNow=true;
+   }
    else if(autoTarget){clickMovePath=[];showToast('Route blocked · choose another destination.');}
    if(autoTarget&&clickMovePath.length===0){customWaypoint=null;saveGame();drawMiniMap();}
   }
@@ -1416,30 +1440,33 @@ function animate(){
  for(const item of [...evidenceItems,...salvageItems,deliveryItem,raceStartItem])if(item.root.visible){item.ring.rotation.z+=dt*.8;item.marker.position.y=1.62+Math.sin(animTime*.003+item.pos.x)*.12;}
  raceGates.forEach((gate,i)=>{if(gate.root.visible)gate.ring.rotation.z+=dt*(i%2?-.65:.65);});
   playerArms.forEach((limb,i)=>limb.rotation.x=(i===0?1:-1)*swing);playerLegs.forEach((limb,i)=>limb.rotation.x=(i===0?-1:1)*swing);body.position.y=walkingNow&&!driving?Math.abs(Math.sin(animTime*.012))*.055:0;
- const animateNpc=npc=>{npc.root.position.y=Math.sin(animTime*.001+npc.phase)*.022;const sway=Math.sin(animTime*.0015+npc.phase)*.035;npc.arms[0].rotation.x=sway;npc.arms[1].rotation.x=-sway;npc.legs[0].rotation.x=-sway*.65;npc.legs[1].rotation.x=sway*.65;};
+ const animateNpc=(npc,travelDistance=0)=>{
+  // Feet stay planted on the ground. Gait advances only with real horizontal travel.
+  npc.root.position.y=0;
+  if(travelDistance>.0001)npc.walkPhase+=travelDistance*8.2;
+  const stride=travelDistance>.0001?Math.sin(npc.walkPhase)*.48:0;
+  const armSwing=travelDistance>.0001?Math.sin(npc.walkPhase+Math.PI)*.34:Math.sin(animTime*.001+npc.phase)*.018;
+  npc.legs[0].rotation.x=stride;npc.legs[1].rotation.x=-stride;
+  npc.arms[0].rotation.x=armSwing;npc.arms[1].rotation.x=-armSwing;
+ };
  animateNpc(jesseNPC);animateNpc(dinerNPC);animateNpc(warehouseNPC);animateNpc(policeNPC);animateNpc(gasContactNPC);animateNpc(motelNPC);animateNpc(witnessNPC);animateNpc(courierNPC);animateNpc(driverNPC);animateNpc(motelClerkNPC);animateNpc(warehouseArchivistNPC);patrolRed.visible=Math.sin(animTime*.012)>0;patrolBlue.visible=!patrolRed.visible;
  ambientNPCs.forEach((npc,i)=>{
-   animateNpc(npc);
+   const oldX=npc.root.position.x,oldZ=npc.root.position.z;
    let nearestDistance=Infinity,awayX=0,awayZ=0;
-   for(const movingCar of movingVehicleRoots){const dx=npc.root.position.x-movingCar.position.x,dz=npc.root.position.z-movingCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
-   if(driving){const dx=npc.root.position.x-playerCar.position.x,dz=npc.root.position.z-playerCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
+   for(const movingCar of movingVehicleRoots){const dx=oldX-movingCar.position.x,dz=oldZ-movingCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
+   if(driving){const dx=oldX-playerCar.position.x,dz=oldZ-playerCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
    if(nearestDistance<8.5){
      const length=Math.hypot(awayX,awayZ)||1;awayX/=length;awayZ/=length;
-     const moved=movePedestrianSafely(npc,npc.root.position.x+awayX*3.8*dt,npc.root.position.z+awayZ*3.8*dt);
-     if(moved){npc.home.x+=awayX*3.8*dt;npc.home.z+=awayZ*3.8*dt;}
-     npc.root.rotation.y=Math.atan2(awayX,awayZ);
-     const run=Math.sin(animTime*.025)*.48;npc.legs[0].rotation.x=moved?run:0;npc.legs[1].rotation.x=moved?-run:0;
-     return;
-    }
-   const distance=npc.root.position.distanceTo(player.position);
-   if(distance<7){npc.root.rotation.y=Math.atan2(player.position.x-npc.root.position.x,player.position.z-npc.root.position.z);npc.legs.forEach(leg=>leg.rotation.x=0);return;}
-   const t=animTime*.00028+npc.wanderPhase,oldX=npc.root.position.x,oldZ=npc.root.position.z;
-   const wanderX=npc.home.x+Math.sin(t)*2.1,wanderZ=npc.home.z+Math.cos(t)*1.15;
-    movePedestrianSafely(npc,wanderX,wanderZ);
-   if(Math.abs(npc.root.position.x-oldX)+Math.abs(npc.root.position.z-oldZ)>.002){
-    npc.root.rotation.y=Math.atan2(npc.root.position.x-oldX,npc.root.position.z-oldZ);
-    const step=Math.sin(t*4)*.22;npc.legs[0].rotation.x=step;npc.legs[1].rotation.x=-step;
+     const step=3.1*dt,tx=oldX+awayX*step,tz=oldZ+awayZ*step;
+     if(movePedestrianSafely(npc,tx,tz)){npc.home.x+=npc.root.position.x-oldX;npc.home.z+=npc.root.position.z-oldZ;}
+   }else{
+     const t=animTime*.00034+npc.wanderPhase;
+     const targetX=npc.home.x+Math.sin(t)*2.0,targetZ=npc.home.z+Math.cos(t)*1.15;
+     movePedestrianSafely(npc,targetX,targetZ);
    }
+   const dx=npc.root.position.x-oldX,dz=npc.root.position.z-oldZ,travel=Math.hypot(dx,dz);
+   if(travel>.0001)npc.root.rotation.y=Math.atan2(dx,dz);
+   animateNpc(npc,travel);
   });
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
