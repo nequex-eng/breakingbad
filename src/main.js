@@ -616,16 +616,13 @@ function buildClickMovePath(destination){
  if(found<0||blocked(goal)){clickMovePath=[];showToast('Choose an open street or sidewalk, not a building.');return false;}
  const raw=[];for(let n=found;n!==start;n=parent[n])raw.push(new THREE.Vector3(min+(n%size)*step,0,min+Math.floor(n/size)*step));
  raw.reverse();
- // Keep only turning points; a long smooth segment avoids the twitchy, stop-start gait of cell-by-cell steering.
- const route=[];let previousX=0,previousZ=0;
- for(let i=0;i<raw.length;i++){
-  const nextX=Math.sign(raw[i].x-(i?raw[i-1].x:player.position.x));
-  const nextZ=Math.sign(raw[i].z-(i?raw[i-1].z:player.position.z));
-  if(i>0&&(nextX!==previousX||nextZ!==previousZ))route.push(raw[i-1]);
-  previousX=nextX;previousZ=nextZ;
- }
- if(raw.length)route.push(raw[raw.length-1]);
- route.push(new THREE.Vector3(destination.x,0,destination.z));clickMovePath=route;return true;
+ // Pull the grid route into diagonal segments and round corners for natural steering.
+ const clearSegment=(a,b)=>{const samples=Math.ceil(a.distanceTo(b)/1.2);for(let k=1;k<samples;k++){const t=k/samples,x=THREE.MathUtils.lerp(a.x,b.x,t),z=THREE.MathUtils.lerp(a.z,b.z,t);if(walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.9&&Math.abs(z-oz)<rz+.9))return false;}return true;};
+ const anchors=[new THREE.Vector3(player.position.x,0,player.position.z)];let cursor=0;
+ while(cursor<raw.length){let farthest=cursor;for(let j=cursor;j<raw.length;j++){if(clearSegment(anchors[anchors.length-1],raw[j]))farthest=j;else break;}anchors.push(raw[farthest]);cursor=farthest+1;}
+ anchors.push(new THREE.Vector3(destination.x,0,destination.z));const route=[];
+ for(let i=1;i<anchors.length-1;i++){const prev=anchors[i-1],corner=anchors[i],next=anchors[i+1],d1=prev.distanceTo(corner),d2=next.distanceTo(corner),incoming=corner.clone().lerp(prev,Math.min(1.8,d1*.28)/Math.max(.001,d1)),outgoing=corner.clone().lerp(next,Math.min(1.8,d2*.28)/Math.max(.001,d2));route.push(incoming);for(let n=1;n<=5;n++){const t=n/5,u=1-t;route.push(incoming.clone().multiplyScalar(u*u).addScaledVector(corner,2*u*t).addScaledVector(outgoing,t*t));}}
+ route.push(anchors[anchors.length-1]);clickMovePath=route;return true;
 }
 function setClickDestination(x,z){
  const point=new THREE.Vector3(THREE.MathUtils.clamp(x,-235,235),0,THREE.MathUtils.clamp(z,-230,230));
@@ -1198,7 +1195,7 @@ function animate(){
    if(manualForward!==0||manualSide!==0)clickMovePath=[];
    while(clickMovePath.length&&player.position.distanceTo(clickMovePath[0])<1.9)clickMovePath.shift();
    const autoTarget=clickMovePath[0]||null;
-   if(autoTarget){yaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z);player.rotation.y=yaw;}
+   if(autoTarget){const desiredYaw=Math.atan2(autoTarget.x-player.position.x,autoTarget.z-player.position.z),angle=((desiredYaw-yaw+Math.PI*3)%(Math.PI*2))-Math.PI;yaw+=angle*(1-Math.exp(-dt*7.5));player.rotation.y=yaw;}
    const forward=autoTarget?1:manualForward;
    const side=autoTarget?0:manualSide;
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
@@ -1210,9 +1207,10 @@ function animate(){
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx&&Math.abs(z-oz)<rz);
    const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?4.0:4.5));
    const oldX=player.position.x,oldZ=player.position.z;
-   if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;
-   if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;
-   if(player.position.x!==oldX||player.position.z!==oldZ){if(!autoTarget)player.rotation.y=Math.atan2(move.x,move.z);walkingNow=true;}
+   if(!isBlocked(next.x,next.z)&&!actorBlocked(next.x,next.z)){player.position.x=next.x;player.position.z=next.z;}
+   else if(!autoTarget){if(!isBlocked(next.x,oldZ)&&!actorBlocked(next.x,oldZ))player.position.x=next.x;if(!isBlocked(player.position.x,next.z)&&!actorBlocked(player.position.x,next.z))player.position.z=next.z;}
+   else{const slideA=new THREE.Vector3(oldX+(next.z-oldZ),0,oldZ),slideB=new THREE.Vector3(oldX,0,oldZ+(next.x-oldX)),valid=p=>!isBlocked(p.x,p.z)&&!actorBlocked(p.x,p.z);if(valid(slideA))player.position.copy(slideA);else if(valid(slideB))player.position.copy(slideB);}
+   if(player.position.x!==oldX||player.position.z!==oldZ){if(!autoTarget){const face=Math.atan2(move.x,move.z),da=((face-yaw+Math.PI*3)%(Math.PI*2))-Math.PI;yaw+=da*(1-Math.exp(-dt*12));player.rotation.y=yaw;}walkingNow=true;}
    else if(autoTarget){clickMovePath=[];showToast('Route blocked · choose another destination.');}
    if(autoTarget&&clickMovePath.length===0){customWaypoint=null;saveGame();drawMiniMap();}
   }
