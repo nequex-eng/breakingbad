@@ -451,13 +451,13 @@ const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,32,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
 const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation.y=Math.PI;
 const policeNPC=makeNPC(96,30,0x344e6b,0x242b32);policeNPC.root.rotation.y=Math.PI;
-const gasContactNPC=makeNPC(73,43,0x57445e,0x30323c,0x9d7358);gasContactNPC.root.rotation.y=Math.PI;
+const gasContactNPC=makeNPC(92,42,0x57445e,0x30323c,0x9d7358);gasContactNPC.root.rotation.y=Math.PI;
 const motelNPC=makeNPC(-132,-65,0x6d5a48,0x343a43,0xb58b6b);motelNPC.root.rotation.y=Math.PI;
 const ambientNPCs=[makeNPC(-108,-28,0x697a70,0x343a43),makeNPC(4,24,0x8a6e57,0x343a43),makeNPC(62,-92,0x6d7180,0x343a43)];
 ambientNPCs.forEach((npc,i)=>{npc.home=npc.root.position.clone();npc.wanderPhase=i*2.15;});
 const witnessNPC=makeNPC(-97,34,0x8a7462,0x343a43,0xb98e6e);
-const courierNPC=makeNPC(-74,34,0x6d5146,0x292f38,0x9b745b);
-const driverNPC=makeNPC(69,43,0x4f6970,0x303841,0x9b745b);
+const courierNPC=makeNPC(-64,31,0x6d5146,0x292f38,0x9b745b);
+const driverNPC=makeNPC(102,42,0x4f6970,0x303841,0x9b745b);
 const motelClerkNPC=makeNPC(-137,-66,0x70634f,0x343a43,0xb98e6e);
 const warehouseArchivistNPC=makeNPC(108,-51,0x706b58,0x343a43,0x9c775d);
 const pedestrianActors=[jesseNPC,dinerNPC,warehouseNPC,policeNPC,gasContactNPC,motelNPC,...ambientNPCs,witnessNPC,courierNPC,driverNPC,motelClerkNPC,warehouseArchivistNPC];
@@ -651,6 +651,18 @@ const walkObstacles=[
  [19,15,2,3.1],[-104,35,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5],
  [73,35,1.25,1.25],[78,35,1.25,1.25],[83,35,1.25,1.25]
 ];
+// Startup placement audit: if a character is ever authored inside a wall, move it to the nearest clear point.
+for(const npc of pedestrianActors){
+ if(!pedestrianBlockedByWorld(npc.root.position.x,npc.root.position.z))continue;
+ const origin=npc.root.position.clone();let placed=false;
+ for(let radius=.8;radius<=12&&!placed;radius+=.8){
+  for(let i=0;i<24;i++){
+   const angle=i*Math.PI/12,x=origin.x+Math.cos(angle)*radius,z=origin.z+Math.sin(angle)*radius;
+   if(!pedestrianBlockedByWorld(x,z)&&!pedestrianBlockedByAnyVehicle(x,z)){npc.root.position.set(x,0,z);npc.home?.set(x,0,z);placed=true;break;}
+  }
+ }
+ if(!placed)console.warn('No clear initial spawn found for pedestrian',npc);
+}
 function buildClickMovePath(destination){
  const step=5,size=97,min=-240,index=(x,z)=>{const gx=Math.max(0,Math.min(size-1,Math.round((x-min)/step))),gz=Math.max(0,Math.min(size-1,Math.round((z-min)/step)));return gz*size+gx;};
  const blocked=(i)=>{const x=min+(i%size)*step,z=min+Math.floor(i/size)*step;return walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+1.45&&Math.abs(z-oz)<rz+1.45);};
