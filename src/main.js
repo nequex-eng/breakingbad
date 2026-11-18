@@ -501,7 +501,15 @@ function worldLabel(text,x,z,color='#e8d9b8'){
 }
 const landmarkLabels=[worldLabel('A-1 CAR WASH',36,43),worldLabel('DINER',-82,32),worldLabel('DESERT WAREHOUSE',100,-50),worldLabel('GAS / REPAIR',78,38),worldLabel('POLICE PATROL',96,30,'#9bb9d9'),worldLabel('ROUTE 66 MOTEL',-132,-65)];
 const SAVE_KEY='abq-stories-save-v2';let saved={};try{saved=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')||{};}catch{}
-gameClock=Number.isFinite(saved.gameClock)?((saved.gameClock%24)+24)%24:14;
+// All devices derive the same in-world time from the wall clock.
+ // One shared 20-minute cycle: 16 minutes of daylight, 4 minutes of night.
+ function synchronizedGameClock(){
+  const cycleSeconds=1200;
+  const phase=((Date.now()/1000)%cycleSeconds+cycleSeconds)%cycleSeconds;
+  if(phase<960)return 6+(phase/960)*12;
+  return (18+((phase-960)/240)*12)%24;
+ }
+ gameClock=synchronizedGameClock();
 
  // Remote desert camp: physical scenery and an animated, fictional work area.
  const desertCamp=new THREE.Group();desertCamp.position.set(-190,0,165);scene.add(desertCamp);
@@ -1200,7 +1208,7 @@ let lastAutoSave=0,uiRefreshClock=0;
 function animate(){
  requestAnimationFrame(animate);
  const dt=Math.min(clock.getDelta(),.04);
- gameClock=(gameClock+dt*.02)%24; // one complete in-game day every 20 real minutes
+ gameClock=synchronizedGameClock(); // synchronized across desktop, phone and tabletutes
  lightingRefresh+=dt;
  if(lightingRefresh>=.25){
   lightingRefresh=0;
@@ -1300,9 +1308,9 @@ function animate(){
    const speed=(keys.ShiftLeft||keys.ShiftRight?13:7)*dt;
    const direction=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
    const right=new THREE.Vector3(-direction.z,0,direction.x);
-   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side*.42));
+   const move=direction.multiplyScalar(forward).add(right.multiplyScalar(side*.12));
   if(move.lengthSq()>0){
-   move.normalize();const next=player.position.clone().addScaledVector(move,speed);
+   if(move.lengthSq()>1)move.normalize();const next=player.position.clone().addScaledVector(move,speed);
    const isBlocked=(x,z)=>walkObstacles.some(([ox,oz,rx,rz])=>Math.abs(x-ox)<rx+.55&&Math.abs(z-oz)<rz+.55);
    const actorBlocked=(x,z)=>pedestrianActors.some(n=>Math.hypot(x-n.root.position.x,z-n.root.position.z)<1.08)||vehicleRegistry.some(v=>Math.hypot(x-v.position.x,z-v.position.z)<(v===playerCar?4.0:4.5));
    const oldX=player.position.x,oldZ=player.position.z;

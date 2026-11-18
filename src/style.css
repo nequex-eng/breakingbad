@@ -78,3 +78,11 @@ html.touch-device .mobile-interact{touch-action:none}
 /* Albuquerque's in-world local time. */
 .game-clock{position:absolute;left:28px;top:76px;font-size:8px;letter-spacing:1.4px;color:#e3d2a9;text-shadow:0 1px 8px #000;pointer-events:none}
 @media(max-width:700px){.game-clock{left:14px;top:68px;font-size:7px;letter-spacing:1px}}
+
+/* Keep the tablet sound toggle above, and visually separate from, the E action button. */
+html.touch-device .sound-toggle{
+ top:auto!important;
+ right:34px!important;
+ bottom:calc(128px + env(safe-area-inset-bottom))!important;
+ z-index:12;
+}
