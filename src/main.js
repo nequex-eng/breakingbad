@@ -763,7 +763,7 @@ function keepCameraOutsideWalls(origin,desired){
  return origin.clone().addScaledVector(dir,Math.max(2.35,nearest-.42));
 }
 
-let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,engineHarmonicGain=null,roadNoiseGain=null,soundEnabled=localStorage.getItem('abq-sound-enabled')==='true',footstepClock=0,nextBirdAt=0,noiseBuffer=null;
+let audioContext=null,audioMaster=null,windGain=null,engineGain=null,engineOsc=null,engineHarmonicGain=null,roadNoiseGain=null,soundEnabled=localStorage.getItem('abq-sound-enabled')!=='false',footstepClock=0,nextBirdAt=0,noiseBuffer=null;
 function makeNoiseBuffer(){
  const buffer=audioContext.createBuffer(1,audioContext.sampleRate*2,audioContext.sampleRate),data=buffer.getChannelData(0);
  for(let i=0;i<data.length;i++)data[i]=(Math.random()*2-1)*.5;
