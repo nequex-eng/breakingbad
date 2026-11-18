@@ -325,11 +325,7 @@ for(const x of [-12,-6,6,12]){
  box(losPollos,x,1.38,11.27,4.35,.12,.22,polloGold);
 }
 // Glass double entrance with gold handles and a red portal frame.
-for(const x of [-1.28,1.28]){
- box(losPollos,x,2.15,11.02,1.18,4.05,.09,polloRed,false);
- box(losPollos,x,2.15,11.17,1.08,3.96,.055,materials.glass,false);
- cylinder(losPollos,x+(x<0?.42:-.42),2.05,11.27,.045,.045,.48,polloGold,8);
-}
+for(const x of [-1.92,1.92]){\n  box(losPollos,x,2.15,11.02,1.08,4.05,.09,polloRed,false);\n  box(losPollos,x,2.15,11.17,.98,3.96,.055,materials.glass,false);\n  cylinder(losPollos,x+(x<0?.34:-.34),2.05,11.27,.045,.045,.48,polloGold,8);\n }
 box(losPollos,0,4.35,11.15,2.75,.22,.35,polloRed);
 box(losPollos,0,.12,11.15,2.75,.24,.35,polloGold);
 box(losPollos,0,.13,16,39,.22,11,materials.asphalt,false);
@@ -533,7 +529,7 @@ function pontiacAztek(x,z,rotation=0){
  box(g,0,2.02,-1.88,1.72,.11,.28,cladding);
  return g;
 }
-pontiacAztek(19,15,-.4);
+const pontiacAztekRoot=pontiacAztek(19,15,-.4);
 car(-104,35,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
@@ -544,13 +540,16 @@ const trafficCars=[
 ];
 let driving=false,driveSpeed=0,crashCooldown=0,fuel=100;
 const movingVehicleRoots=trafficCars.map(t=>t.root);
+const parkedDriveables=vehicleRegistry.filter(v=>v!==playerCar&&v!==patrolCar&&!movingVehicleRoots.includes(v));
+let currentVehicle=playerCar;
 const buildingBlockers=[
  // One authoritative footprint per building; vehicle and pedestrian systems share this registry.
  {x:-30,z:-38,halfX:6.9,halfZ:5.18,pedX:8.2,pedZ:6.5},{x:-58,z:-38,halfX:6,halfZ:4.5,pedX:7.5,pedZ:6},
  {x:8,z:-44,halfX:6,halfZ:4.5,pedX:7.5,pedZ:6},{x:42,z:-42,halfX:6.6,halfZ:4.95,pedX:8,pedZ:6.5},
  {x:-70,z:38,halfX:5.4,halfZ:4.05,pedX:7,pedZ:5.5},{x:70,z:42,halfX:6.6,halfZ:4.95,pedX:8,pedZ:6.5},
  {x:36,z:28,halfX:14.5,halfZ:9,pedX:15.5,pedZ:9.7},{x:-82,z:22,halfX:12,halfZ:7.5,pedX:13,pedZ:8.5},
- {x:150,z:65,halfX:17,pedX:18.5,halfZ:11,pedZ:12},
+ // Removed full-building blocker; segmented wall blockers preserve the entrance.
+
  {x:100,z:-70,halfX:19,halfZ:15,pedX:20,pedZ:16},{x:78,z:24,halfX:10,halfZ:6.5,pedX:10,pedZ:7},
  {x:-145,z:-76,halfX:28,halfZ:6.5,pedX:28.5,pedZ:7.5},
  // Los Pollos wall footprints leave a central pedestrian doorway open.
@@ -946,7 +945,7 @@ let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI;
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({gameClock,cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,polloState,polloDeadline,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
-if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
+if(saved.driving){driving=true;player.visible=false;player.position.copy(currentVehicle.position);player.rotation.y=currentVehicle.rotation.y;}
 else if(Number.isFinite(saved.playerX)&&Number.isFinite(saved.playerZ))player.position.set(saved.playerX,0,saved.playerZ);
 if(!driving&&Math.abs(playerCar.position.z)<10)playerCar.position.z=playerCar.position.z<0?-13:13;
 if(vehicleCollisionAt(playerCar.position,playerCar.rotation.y,playerCar)){
@@ -1384,7 +1383,7 @@ function updateActive(){
    {type:'pollo-staff',label:'TALK TO RESTAURANT STAFF',pos:polloStaffNPC.root.position,range:4.8}
   ];
   for(const t of polloTargets){const d=player.position.distanceTo(t.pos);if(d<t.range&&d<best){best=d;active=t;}}
-  const rvDistance=player.position.distanceTo(playerCar.position);
+  const rvDistance=player.position.distanceTo(currentVehicle.position);
 if(cookState==='idle'){
  const next=nextCookStationIndex();
  if(next>=0){const station=cookStations[next],d=player.position.distanceTo(station.pos);if(d<5.2&&d<best){best=d;active={type:'rv-station',index:next,label:station.label,pos:station.pos,range:5.2};}}
@@ -1395,13 +1394,15 @@ if(cookState==='ready'){const d=player.position.distanceTo(cookPackagePos);if(d<
 if(cookState==='loaded'){const d=player.position.distanceTo(motelClerkNPC.root.position);if(d<5.8&&d<best){best=d;active={type:'rv-sale',label:'SELL THE FINISHED PRODUCT',pos:motelClerkNPC.root.position,range:5.8};}}
    if(fuel<100){for(const p of [new THREE.Vector3(73,0,35),new THREE.Vector3(78,0,35),new THREE.Vector3(83,0,35)]){const d=player.position.distanceTo(p);if(d<4.8&&d<best){best=d;active={type:'gas-refuel',label:'REFUEL VEHICLE · $300',pos:p,range:4.8};}}}
   for(let i=0;i<ambientNPCs.length;i++){const npc=ambientNPCs[i],d=player.position.distanceTo(npc.root.position);if(d<4.8&&d<best){best=d;active={type:'local',index:i,label:'TALK TO RESIDENT',pos:npc.root.position,range:4.8};}}
+  const nearbyCar=parkedDriveables.map(vehicle=>({vehicle,d:player.position.distanceTo(vehicle.position)})).filter(v=>v.d<5.2).sort((a,b)=>a.d-b.d)[0];
+  if(nearbyCar&&nearbyCar.d<best){best=nearbyCar.d;active={type:'vehicle-enter',vehicle:nearbyCar.vehicle,label:nearbyCar.vehicle===pontiacAztekRoot?'DRIVE WALTER’S PONTIAC AZTEK':'ENTER PARKED CAR',pos:nearbyCar.vehicle.position,range:5.2};}
   if(deliveryState==='active'){const target=deliveryTargets[deliveryTargetIndex],d=target?player.position.distanceTo(target.pos):Infinity;if(d<9&&d<=best){best=d;active={type:'delivery-drop',label:'DELIVER PACKAGE',pos:target.pos,range:9};}}
   if(missionStep===22){for(const item of evidenceItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'COLLECT '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}}
   if(raceStartItem.root.visible){const d=player.position.distanceTo(raceStartItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:raceStartItem,label:'START STREET TIME TRIAL',pos:raceStartItem.pos,range:5.5};}}
    if((deliveryState==='available'||deliveryState==='failed')&&deliveryItem.root.visible){const d=player.position.distanceTo(deliveryItem.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item:deliveryItem,label:'PICK UP COURIER PACKAGE',pos:deliveryItem.pos,range:5.5};}}
   for(const item of salvageItems){if(item.collected)continue;const d=player.position.distanceTo(item.pos);if(d<5.5&&d<best){best=d;active={type:'activity-item',item,label:'SEARCH '+item.label.toUpperCase(),pos:item.pos,range:5.5};}}
   if(active&&!dialogOpen){el.classList.add('visible');$('interaction-copy').textContent=' '+active.label;}
-  else if(player.position.distanceTo(playerCar.position)<5.0){el.classList.add('visible');$('interaction-copy').textContent=' ENTER RV';}
+  else if(player.position.distanceTo(currentVehicle.position)<5.0){el.classList.add('visible');$('interaction-copy').textContent=' ENTER VEHICLE';}
   else el.classList.remove('visible');
  }
  let zone='RESIDENTIAL DISTRICT';
@@ -1424,7 +1425,7 @@ function drawMiniMap(){
  const target=currentObjective();if(target){const tx=cx+(target.pos.x-player.position.x)*scale,ty=cy+(target.pos.z-player.position.z)*scale;if(tx>4&&tx<w-4&&ty>4&&ty<h-4){ctx.strokeStyle='#fff0b2';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(tx,ty,9,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}}
  for(const item of [...evidenceItems,...salvageItems]){if(!item.root.visible)continue;const ix=cx+(item.pos.x-player.position.x)*scale,iy=cy+(item.pos.z-player.position.z)*scale;if(ix>4&&ix<w-4&&iy>4&&iy<h-4){ctx.fillStyle=item.kind==='salvage'?'#9ac7a4':'#e5c979';ctx.fillRect(ix-3,iy-3,6,6);}}
  if(deliveryItem.root.visible){const ix=cx+(deliveryItem.pos.x-player.position.x)*scale,iy=cy+(deliveryItem.pos.z-player.position.z)*scale;if(ix>4&&ix<w-4&&iy>4&&iy<h-4){ctx.fillStyle='#8fc4d2';ctx.fillRect(ix-4,iy-4,8,8);}}
- const carX=cx+(playerCar.position.x-player.position.x)*scale,carY=cy+(playerCar.position.z-player.position.z)*scale;if(carX>4&&carX<w-4&&carY>4&&carY<h-4){ctx.save();ctx.translate(carX,carY);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#8fc4d2';ctx.fillRect(-3,-6,6,12);ctx.restore();}
+ const carX=cx+(currentVehicle.position.x-player.position.x)*scale,carY=cy+(currentVehicle.position.z-player.position.z)*scale;if(carX>4&&carX<w-4&&carY>4&&carY<h-4){ctx.save();ctx.translate(carX,carY);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#8fc4d2';ctx.fillRect(-3,-6,6,12);ctx.restore();}
  ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
 }
 function drawWorldMap(){
@@ -1454,7 +1455,7 @@ function drawWorldMap(){
  if(deliveryItem.root.visible){const q=p(deliveryItem.pos.x,deliveryItem.pos.z);ctx.fillStyle='#8fc4d2';ctx.fillRect(q.x-6,q.y-6,12,12);}
  const camp=p(-190,165);ctx.fillStyle='#d0a75e';ctx.beginPath();ctx.arc(camp.x,camp.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#e0d1aa';ctx.font='bold 12px monospace';ctx.fillText('DESERT RV CAMP',camp.x+10,camp.y-8);
   const target=currentObjective();if(target){const q=p(target.pos.x,target.pos.z);ctx.strokeStyle='#ffe69c';ctx.lineWidth=4;ctx.beginPath();ctx.arc(q.x,q.y,15,0,Math.PI*2);ctx.stroke();}
- const car=p(playerCar.position.x,playerCar.position.z);ctx.save();ctx.translate(car.x,car.y);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#83bfd1';ctx.fillRect(-7,-13,14,26);ctx.restore();
+ const car=p(currentVehicle.position.x,currentVehicle.position.z);ctx.save();ctx.translate(car.x,car.y);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#83bfd1';ctx.fillRect(-7,-13,14,26);ctx.restore();
  const me=p(player.position.x,player.position.z);ctx.save();ctx.translate(me.x,me.y);ctx.rotate(-player.rotation.y);ctx.fillStyle='#fff0cf';ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(9,10);ctx.lineTo(0,6);ctx.lineTo(-9,10);ctx.closePath();ctx.fill();ctx.restore();
  const objectiveText=target?target.name+' · '+Math.round(player.position.distanceTo(target.pos))+' M':'FREE ROAM';
  ctx.fillStyle='#d8c58f';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(objectiveText,w/2,h-12);
@@ -1477,15 +1478,16 @@ worldMapCanvas.addEventListener('pointerup',e=>{
 worldMapCanvas.addEventListener('pointercancel',()=>{mapPointerStart=null;});
 const clearWaypointButton=$('waypoint-clear');if(clearWaypointButton)clearWaypointButton.onclick=()=>{customWaypoint=null;clickMovePath=[];saveGame();drawWorldMap();drawMiniMap();updateObjectiveDistance();showToast('Custom waypoint cleared.');};
 $('map-close').onclick=()=>setMapOpen(false);
-function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('RV entered · W accelerate · A/D steer · S reverse · H horn');updateActive();}
-function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(playerCar.rotation.y),0,-Math.sin(playerCar.rotation.y));player.position.copy(playerCar.position).addScaledVector(side,3.4);player.rotation.y=playerCar.rotation.y;yaw=playerCar.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
-function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item'||active.type==='rv-cook'||active.type==='rv-sale'||active.type==='rv-station'||active.type==='rv-package')){interact(active);return;}if(player.position.distanceTo(playerCar.position)<5.0){enterVehicle();return;}if(active)interact(active);}
+function enterVehicle(){playDoorSound();driving=true;driveSpeed=0;player.visible=false;player.position.copy(currentVehicle.position);player.rotation.y=currentVehicle.rotation.y;yaw=currentVehicle.rotation.y;showToast(currentVehicle===playerCar?'RV entered · W accelerate · A/D steer · S reverse · H horn':'Vehicle entered · W accelerate · A/D steer · S reverse · H horn');updateActive();}
+function exitVehicle(){playDoorSound();driving=false;driveSpeed=0;player.visible=true;const side=new THREE.Vector3(Math.cos(currentVehicle.rotation.y),0,-Math.sin(currentVehicle.rotation.y));player.position.copy(currentVehicle.position).addScaledVector(side,currentVehicle===playerCar?3.4:2.3);player.rotation.y=currentVehicle.rotation.y;yaw=currentVehicle.rotation.y;showToast('You stepped out of the vehicle.');updateActive();}
+function onInteract(){if(dialogOpen||mapOpen)return;if(driving){exitVehicle();return;}if(active&&(active.type==='delivery-drop'||active.type==='activity-item'||active.type==='rv-cook'||active.type==='rv-sale'||active.type==='rv-station'||active.type==='rv-package')){interact(active);return;}if(active?.type==='vehicle-enter'){currentVehicle=active.vehicle;enterVehicle();return;}if(player.position.distanceTo(currentVehicle.position)<5.0){enterVehicle();return;}if(active)interact(active);}
 
 window.addEventListener('keydown',e=>{
  unlockGameAudio();
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();
  if(e.code==='KeyM'){setMapOpen(!mapOpen);return;}
   if(e.code==='KeyH'&&driving){playHorn();return;}
+  if(e.code==='KeyE'&&!driving&&active?.type==='vehicle-enter'){currentVehicle=active.vehicle;enterVehicle();return;}
  if(e.code==='KeyC'&&!driving&&active?.type==='rv-cook'){interact(active);return;}
  if(e.code==='Escape'){if(mapOpen)setMapOpen(false);else closeDialogue();return;}
  if(mapOpen)return;
@@ -1515,7 +1517,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
 renderer.domElement.addEventListener('pointercancel',()=>{dragging=false;scenePointerStart=null;});
 renderer.domElement.addEventListener('pointermove',e=>{
  if(!dragging)return;
- yaw-=(e.clientX-lastX)*.0028; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.0025));
+ yaw-=(e.clientX-lastX)*.00145; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.0018));
  lastX=e.clientX;lastY=e.clientY;
 });
 function bindHold(id,code){
@@ -1634,34 +1636,34 @@ function animate(){
    const throttle=THREE.MathUtils.clamp((keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joystickY,-1,1);
    const steeringInput=THREE.MathUtils.clamp((keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joystickX,-1,1);
     // Softer steering curve prevents tiny thumb movements from snapping the long RV around.
-    const steering=Math.sign(steeringInput)*Math.pow(Math.abs(steeringInput),1.35);
+    const steering=Math.sign(steeringInput)*Math.pow(Math.abs(steeringInput),1.65);
    const effectiveThrottle=(fuel<=0&&throttle>0)?0:throttle;
    driveSpeed=THREE.MathUtils.clamp(driveSpeed+effectiveThrottle*15*dt,-10,24);
    if(fuel<=0&&driveSpeed>0)driveSpeed=Math.max(0,driveSpeed-18*dt);
    fuel=THREE.MathUtils.clamp(fuel-Math.abs(driveSpeed)*dt*.018,0,100);
    if(!throttle)driveSpeed*=Math.pow(.88,dt*60);
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
-   const oldRotation=playerCar.rotation.y;
+   const oldRotation=currentVehicle.rotation.y;
    const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);
-    const steeringRate=(.12+.50*speedRatio);
+    const steeringRate=(.065+.27*speedRatio);
     const steeredRotation=oldRotation-steering*steeringRate*dt*(driveSpeed>=0?1:-1);
-   if(!vehicleCollisionAt(playerCar.position,steeredRotation,playerCar))playerCar.rotation.y=steeredRotation;
-   const oldPosition=playerCar.position.clone();
-   const heading=new THREE.Vector3(Math.sin(playerCar.rotation.y),0,Math.cos(playerCar.rotation.y));
+   if(!vehicleCollisionAt(currentVehicle.position,steeredRotation,currentVehicle))currentVehicle.rotation.y=steeredRotation;
+   const oldPosition=currentVehicle.position.clone();
+   const heading=new THREE.Vector3(Math.sin(currentVehicle.rotation.y),0,Math.cos(currentVehicle.rotation.y));
    const next=oldPosition.clone().addScaledVector(heading,driveSpeed*dt);
    const travel=oldPosition.distanceTo(next),steps=Math.max(1,Math.ceil(travel/.12));
    let collision='';
    for(let step=1;step<=steps;step++){
     const candidate=oldPosition.clone().lerp(next,step/steps);
-    collision=vehiclePathHitsPedestrian(playerCar.position,candidate,playerCar.rotation.y,playerCar)?'pedestrian':vehicleCollisionAt(candidate,playerCar.rotation.y,playerCar);
+    collision=vehiclePathHitsPedestrian(currentVehicle.position,candidate,currentVehicle.rotation.y,currentVehicle)?'pedestrian':vehicleCollisionAt(candidate,currentVehicle.rotation.y,currentVehicle);
     if(collision)break;
-    playerCar.position.copy(candidate);
+    currentVehicle.position.copy(candidate);
    }
    if(collision){
     driveSpeed=0; // A blocked vehicle stops instead of bouncing through the obstacle.
     if(crashCooldown<=0){playImpact();const pedestrian=collision==='pedestrian';showToast(pedestrian?'The car stopped before reaching the pedestrian.':'Vehicle collision: '+collision+'.');crashCooldown=1.0;}
    }
-   playerCar.position.x=THREE.MathUtils.clamp(playerCar.position.x,-245,245);playerCar.position.z=THREE.MathUtils.clamp(playerCar.position.z,-235,235);
+   currentVehicle.position.x=THREE.MathUtils.clamp(currentVehicle.position.x,-245,245);currentVehicle.position.z=THREE.MathUtils.clamp(currentVehicle.position.z,-235,235);
    player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
    $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H · FUEL '+Math.round(fuel)+'%';
   }else{
@@ -1714,7 +1716,7 @@ function animate(){
  if(deliveryState==='active'&&Date.now()>=deliveryDeadline){deliveryState='failed';deliveryDeadline=0;deliveryItem.root.visible=true;showToast('Delivery window expired. The package is back at the car wash.');saveGame();updateHUD();}
  if(raceActive){
   if(Date.now()>=raceDeadline){raceActive=false;raceGates.forEach(g=>g.root.visible=false);raceStartItem.root.visible=true;showToast('Time trial expired. Return to the start marker to try again.');}
-  else if(driving&&playerCar.position.distanceTo(raceCheckpoints[raceIndex])<7.5){
+  else if(driving&&currentVehicle.position.distanceTo(raceCheckpoints[raceIndex])<7.5){
    raceIndex++;
    if(raceIndex>=raceCheckpoints.length){raceActive=false;raceGates.forEach(g=>g.root.visible=false);raceStartItem.root.visible=true;cash+=1800;showToast('Street time trial complete · +$1,800');updateHUD();saveGame();}
    else showToast('Checkpoint '+raceIndex+' / '+raceCheckpoints.length+' cleared. Keep moving!');
@@ -1742,7 +1744,7 @@ function animate(){
    const oldX=npc.root.position.x,oldZ=npc.root.position.z;
    let nearestDistance=Infinity,awayX=0,awayZ=0;
    for(const movingCar of movingVehicleRoots){const dx=oldX-movingCar.position.x,dz=oldZ-movingCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
-   if(driving){const dx=oldX-playerCar.position.x,dz=oldZ-playerCar.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
+   if(driving){const dx=oldX-currentVehicle.position.x,dz=oldZ-currentVehicle.position.z,d=Math.hypot(dx,dz);if(d<nearestDistance){nearestDistance=d;awayX=dx;awayZ=dz;}}
    if(nearestDistance<8.5){
      const length=Math.hypot(awayX,awayZ)||1;awayX/=length;awayZ/=length;
      const step=3.1*dt,tx=oldX+awayX*step,tz=oldZ+awayZ*step;
@@ -1758,7 +1760,7 @@ function animate(){
   });
  updateObjectiveBeacon(animTime);
  if(animTime-lastAutoSave>4000){saveGame();lastAutoSave=animTime;}
- const cameraYaw=driving?playerCar.rotation.y:yaw;
+ const cameraYaw=driving?currentVehicle.rotation.y:yaw;
  const camDist=driving?13.5:8.8;
  const cameraPitch=driving?pitch*.35:pitch;
  cameraTarget.set(player.position.x,player.position.y+(driving?2.85:1.82),player.position.z);
