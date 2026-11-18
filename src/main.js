@@ -287,9 +287,9 @@ box(diner,0,5.1,0,25,.35,16,materials.red);
 box(diner,0,3.5,7.6,15,1.1,.25,materials.red);
 for(let x of [-8,-3,3,8]) box(diner,x,2.5,7.7,2,2.2,.15,materials.glass);
 box(diner,0,.12,13,27,.2,7,materials.asphalt);
-// Signature Los Pollos Hermanos frontage: red fascia, gold lettering and striped awning.
-box(diner,0,5.42,7.72,23,.28,.32,mat(0x9c3028));
-makeFacadeSign(diner,'LOS POLLOS HERMANOS',0,5.62,7.94,19.5,1.45,{bg:'#9e2926',fg:'#fff0c9',accent:'#e5b94f',sub:'FAMOUS FRIED CHICKEN'});
+// Independent neighborhood diner; Los Pollos has its own full-size restaurant farther east.
+box(diner,0,5.42,7.72,23,.28,.32,mat(0x334b55));
+makeFacadeSign(diner,'CROSSROADS DINER',0,5.62,7.94,19.5,1.45,{bg:'#24434c',fg:'#fff0c9',accent:'#e5b94f',sub:'COFFEE · PIE · BREAKFAST'});
 for(let x=-9;x<=9;x+=3){const stripe=box(diner,x,3.82,8.02,2.9,.48,.3,mat((x/3)%2===0?0xe8dfc7:0xb8332c));stripe.rotation.x=-.12;}
 box(diner,0,.28,8.15,4.8,.42,.5,mat(0x403c34));
 for(const x of [-10.5,10.5]){box(diner,x,2.7,7.9,.18,4.2,.18,mat(0x5a5144));box(diner,x,4.9,8.02,.35,.35,.3,mat(0xf1cf7a),false);}
@@ -341,7 +341,7 @@ for(const x of [-5,0,5])makeFacadeSign(gasStation,'GAS',x,2.55,11.48,1.05,.42,{b
 const vehicleRegistry=[];
 function car(x,z,color,rotation=0){
  const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=rotation;scene.add(g);vehicleRegistry.push(g);
- const paint=new THREE.MeshStandardMaterial({color,roughness:.38,metalness:.42}),trim=mat(0x272b2a),chrome=mat(0xb6b8b0),rubber=mat(0x202322),lamp=new THREE.MeshStandardMaterial({color:0xffedc9,emissive:0xffd99a,emissiveIntensity:.16,roughness:.22});
+ const paint=new THREE.MeshPhysicalMaterial({color,roughness:.34,metalness:.48,clearcoat:.38,clearcoatRoughness:.24}),trim=mat(0x272b2a),chrome=mat(0xb6b8b0),rubber=mat(0x202322),lamp=new THREE.MeshStandardMaterial({color:0xffedc9,emissive:0xffd99a,emissiveIntensity:.2,roughness:.2});
  // Sculpted lower body, hood, cabin and rear deck.
  box(g,0,.78,0,2.5,1.12,5,paint);
  box(g,0,1.16,1.62,2.42,.34,1.68,paint);
@@ -364,6 +364,12 @@ function car(x,z,color,rotation=0){
   }
   box(g,side*1.18,1.13,-.65,.18,.09,.12,chrome,false);
   box(g,side*1.25,1.35,.08,.2,.16,.2,paint);
+  // Door shut-lines, flush handles and separate mirror housings.
+  for(const seamZ of [-.92,.82])box(g,side*1.258,.91,seamZ,.025,.72,.035,trim,false);
+  for(const handleZ of [-.92,.72])box(g,side*1.29,1.12,handleZ,.045,.055,.32,chrome,false);
+  const mirror=box(g,side*1.34,1.43,.82,.24,.16,.3,trim);mirror.rotation.z=side*.12;
+  box(g,side*1.35,1.43,.82,.12,.09,.2,chrome,false);
+  box(g,side*1.258,.88,-.08,.035,.055,3.75,chrome,false);
  }
  // Front grille, chrome bumper, headlamps and rear lamps.
  box(g,0,.7,2.52,1.05,.38,.1,trim);
@@ -377,6 +383,16 @@ function car(x,z,color,rotation=0){
  box(g,0,.5,-2.58,2.28,.16,.15,chrome);
  box(g,0,.63,2.64,.72,.2,.045,mat(0xd7d5c8),false);
  box(g,0,.62,-2.66,.72,.2,.045,mat(0xd7d5c8),false);
+ // Individually textured New Mexico plates add a small but convincing finish detail.
+ const plateCanvas=document.createElement('canvas');plateCanvas.width=512;plateCanvas.height=160;
+ const plateCtx=plateCanvas.getContext('2d'),plateGrad=plateCtx.createLinearGradient(0,0,512,160);plateGrad.addColorStop(0,'#f6e7b9');plateGrad.addColorStop(1,'#d5bd83');
+ plateCtx.fillStyle=plateGrad;plateCtx.fillRect(0,0,512,160);plateCtx.strokeStyle='#6c5a3c';plateCtx.lineWidth=10;plateCtx.strokeRect(7,7,498,146);
+ plateCtx.fillStyle='#a33a2e';plateCtx.font='bold 31px Arial';plateCtx.textAlign='center';plateCtx.fillText('NEW MEXICO',256,42);
+ plateCtx.fillStyle='#283d48';plateCtx.font='bold 70px monospace';plateCtx.fillText('ABQ  86',256,116);
+ const plateTex=new THREE.CanvasTexture(plateCanvas);plateTex.colorSpace=THREE.SRGBColorSpace;
+ const frontPlate=new THREE.Mesh(new THREE.PlaneGeometry(.72,.225),new THREE.MeshBasicMaterial({map:plateTex,toneMapped:false}));frontPlate.position.set(0,.63,2.668);g.add(frontPlate);
+ const rearPlate=new THREE.Mesh(new THREE.PlaneGeometry(.72,.225),new THREE.MeshBasicMaterial({map:plateTex,toneMapped:false}));rearPlate.position.set(0,.62,-2.684);rearPlate.rotation.y=Math.PI;g.add(rearPlate);
+ box(g,0,1.35,1.78,.045,.018,1.1,chrome,false);
  return g;
 }
 const playerCar=car(-190,165,0xe8e4d6,0);
@@ -632,7 +648,9 @@ box(body,0,2.005,.32,.22,.045,.07,glassMat,false);
 const playerArms=[],playerLegs=[];
 for(const side of [-1,1]){
  const armPivot=new THREE.Group();armPivot.position.set(side*.48,1.72,0);body.add(armPivot);
- cylinder(armPivot,0,-.4,0,.14,.17,.82,jacketMat,10);armPivot.rotation.z=side*.12;playerArms.push(armPivot);
+ cylinder(armPivot,0,-.4,0,.14,.17,.82,jacketMat,10);armPivot.rotation.z=side*.12;
+ box(armPivot,0,-.72,.015,.29,.12,.29,mat(0x625b4b),false);
+ const hand=new THREE.Mesh(new THREE.SphereGeometry(.115,10,8),skinMat);hand.position.set(0,-.86,.025);armPivot.add(hand);playerArms.push(armPivot);
  const legPivot=new THREE.Group();legPivot.position.set(side*.2,.78,0);body.add(legPivot);
  cylinder(legPivot,0,-.36,0,.16,.19,.72,pantsMat,10);
  box(legPivot,0,-.72,.12,.36,.17,.58,materials.shoe);
@@ -666,24 +684,34 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
  const arms=[],legs=[];
  for(const side of [-1,1]){
   const armPivot=new THREE.Group();armPivot.position.set(side*.43,1.72,0);root.add(armPivot);
-  const arm=cylinder(armPivot,0,-.39,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;arms.push(armPivot);
+  const arm=cylinder(armPivot,0,-.39,0,.13,.16,.78,mat(shirt),8);arm.rotation.z=side*.12;
+  box(armPivot,0,-.7,.015,.28,.12,.27,mat(0x4a4942),false);
+  const hand=new THREE.Mesh(new THREE.SphereGeometry(.105,9,7),faceSkin);hand.position.set(0,-.82,.025);armPivot.add(hand);arms.push(armPivot);
   const legPivot=new THREE.Group();legPivot.position.set(side*.19,.78,0);root.add(legPivot);
   cylinder(legPivot,0,-.375,0,.15,.18,.75,mat(pants),8);
   box(legPivot,0,-.72,.12,.32,.15,.5,materials.shoe);
   box(legPivot,0,-.39,.095,.3,.1,.2,mat(0x383a37),false);
   legs.push(legPivot);
  }
- // Clothing seams, collar, front placket and pockets break up the old featureless torso.
- const shirtMat=mat(0xe0d7c4),darkCloth=mat(0x343a35);
+ // Clothing seams, collar, placket, pockets, cuffs and hem give each NPC a tailored silhouette.
+ const shirtMat=mat(0xe0d7c4),darkCloth=mat(0x343a35),seamMat=mat(0x8b8371);
  box(root,0,1.86,.315,.23,.16,.08,shirtMat,false);
  box(root,0,1.39,.435,.045,.64,.035,darkCloth,false);
  for(const y of [1.56,1.38,1.2])cylinder(root,0,y,.46,.025,.025,.025,mat(0xc9b98e),8);
+ box(root,0,.82,.015,.58,.1,.56,darkCloth,false);
  for(const side of [-1,1]){
   box(root,side*.22,1.45,.39,.24,.28,.06,mat(0x77736a),false);
   box(root,side*.45,1.02,0,.31,.12,.28,mat(0x4a4a43),false);
+  box(root,side*.22,1.78,.28,.25,.09,.1,seamMat,false);
  }
- const faceStubble=mat(0x4b4138);
- for(const side of [-1,1]){const brow=box(root,side*.105,2.22,.29,.13,.035,.045,faceStubble,false);}
+ // Facial planes, brows, eyelids and a mouth line avoid blank mannequin faces.
+ const faceStubble=mat(0x4b4138),mouthMat=mat(0x694c42);
+ for(const side of [-1,1]){
+  box(root,side*.105,2.22,.29,.13,.035,.045,faceStubble,false);
+  box(root,side*.105,2.105,.316,.075,.018,.018,faceStubble,false);
+ }
+ box(root,0,1.99,.306,.13,.025,.025,mouthMat,false);
+ for(const side of [-1,1])box(root,side*.27,2.19,.015,.075,.22,.12,mat(0x3c3934),false);
  return {root,phase:Math.random()*6,arms,legs,walkPhase:Math.random()*Math.PI*2};
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
