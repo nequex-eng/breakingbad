@@ -315,7 +315,7 @@ box(losPollos,0,.14,0,34,.28,22,mat(0xc7b99d),false);
 box(losPollos,-16.85,2.85,0,.3,5.42,22,polloCream);
 box(losPollos,16.85,2.85,0,.3,5.42,22,polloCream);
 box(losPollos,0,2.85,-10.85,34,5.42,.3,polloCream);
-for(const [x,w] of [[-15.5,3],[-9,1.8],[-2.65,2.7],[2.65,2.7],[9,1.8],[15.5,3]])box(losPollos,x,2.85,10.85,w,5.42,.3,polloCream);
+for(const [x,w] of [[-15.5,3],[-9,1.8],[-4.4,2.7],[4.4,2.7],[9,1.8],[15.5,3]])box(losPollos,x,2.85,10.85,w,5.42,.3,polloCream);
 box(losPollos,0,5.65,0,34,.3,22,polloCream,false);
 box(losPollos,0,5.82,0,35,.34,23,polloRed);
 box(losPollos,0,5.35,11.25,33,.42,.34,polloRed);
@@ -325,10 +325,10 @@ for(const x of [-12,-6,6,12]){
  box(losPollos,x,1.38,11.27,4.35,.12,.22,polloGold);
 }
 // Glass double entrance with gold handles and a red portal frame.
-for(const x of [-1.92,1.92]){
-  box(losPollos,x,2.15,11.02,1.08,4.05,.09,polloRed,false);
-  box(losPollos,x,2.15,11.17,.98,3.96,.055,materials.glass,false);
-  cylinder(losPollos,x+(x<0?.34:-.34),2.05,11.27,.045,.045,.48,polloGold,8);
+for(const x of [-2.35,2.35]){
+  box(losPollos,x,2.15,11.02,.9,4.05,.09,polloRed,false);
+  box(losPollos,x,2.15,11.17,.82,3.96,.055,materials.glass,false);
+  cylinder(losPollos,x+(x<0?.28:-.28),2.05,11.27,.045,.045,.48,polloGold,8);
  }
 box(losPollos,0,4.35,11.15,2.75,.22,.35,polloRed);
 box(losPollos,0,.12,11.15,2.75,.24,.35,polloGold);
@@ -559,7 +559,7 @@ const buildingBlockers=[
  // Los Pollos wall footprints leave a central pedestrian doorway open.
  {x:133.15,z:65,halfX:.25,halfZ:11,pedX:.7,pedZ:11.4},{x:166.85,z:65,halfX:.25,halfZ:11,pedX:.7,pedZ:11.4},
  {x:150,z:54.15,halfX:17,halfZ:.25,pedX:17.3,pedZ:.7},
- ...[-15.5,-9,-2.65,2.65,9,15.5].map((x,i)=>({x:150+x,z:75.85,halfX:i===0||i===5?1.5:i===1||i===4?.9:1.35,halfZ:.2,pedX:i===0||i===5?1.7:i===1||i===4?1.1:1.55,pedZ:.65})),
+ ...[-15.5,-9,-4.4,4.4,9,15.5].map((x,i)=>({x:150+x,z:75.85,halfX:i===0||i===5?1.5:i===1||i===4?.9:1.35,halfZ:.2,pedX:i===0||i===5?1.7:i===1||i===4?1.1:1.55,pedZ:.65})),
  ...[-12,-6,6,12].map(x=>({x:150+x,z:76.05,halfX:2.1,halfZ:.22,pedX:2.25,pedZ:.55}))
 ];
 const vehicleBlockers=buildingBlockers.map(({x,z,halfX,halfZ})=>({x,z,halfX,halfZ}));
@@ -1378,7 +1378,7 @@ function updateActive(){
  const el=$('interaction');
  if(driving){el.classList.add('visible');$('interaction-copy').textContent=' EXIT VEHICLE';}
  else{
-  for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
+  for(const l of locations){if(l.type==='pollo')continue;const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
   const polloTargets=[
    {type:'pollo-gus',label:'SPEAK WITH GUSTAVO FRING',pos:gusNPC.root.position,range:4.9},
    {type:'pollo-order',label:'PLACE CHICKEN ORDER',pos:new THREE.Vector3(150,0,70),range:3.8},
@@ -1429,7 +1429,7 @@ function drawMiniMap(){
  const target=currentObjective();if(target){const tx=cx+(target.pos.x-player.position.x)*scale,ty=cy+(target.pos.z-player.position.z)*scale;if(tx>4&&tx<w-4&&ty>4&&ty<h-4){ctx.strokeStyle='#fff0b2';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(tx,ty,9,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}}
  for(const item of [...evidenceItems,...salvageItems]){if(!item.root.visible)continue;const ix=cx+(item.pos.x-player.position.x)*scale,iy=cy+(item.pos.z-player.position.z)*scale;if(ix>4&&ix<w-4&&iy>4&&iy<h-4){ctx.fillStyle=item.kind==='salvage'?'#9ac7a4':'#e5c979';ctx.fillRect(ix-3,iy-3,6,6);}}
  if(deliveryItem.root.visible){const ix=cx+(deliveryItem.pos.x-player.position.x)*scale,iy=cy+(deliveryItem.pos.z-player.position.z)*scale;if(ix>4&&ix<w-4&&iy>4&&iy<h-4){ctx.fillStyle='#8fc4d2';ctx.fillRect(ix-4,iy-4,8,8);}}
- const carX=cx+(currentVehicle.position.x-player.position.x)*scale,carY=cy+(currentVehicle.position.z-player.position.z)*scale;if(carX>4&&carX<w-4&&carY>4&&carY<h-4){ctx.save();ctx.translate(carX,carY);ctx.rotate(-playerCar.rotation.y);ctx.fillStyle='#8fc4d2';ctx.fillRect(-3,-6,6,12);ctx.restore();}
+ const carX=cx+(currentVehicle.position.x-player.position.x)*scale,carY=cy+(currentVehicle.position.z-player.position.z)*scale;if(carX>4&&carX<w-4&&carY>4&&carY<h-4){ctx.save();ctx.translate(carX,carY);ctx.rotate(-currentVehicle.rotation.y);ctx.fillStyle='#8fc4d2';ctx.fillRect(-3,-6,6,12);ctx.restore();}
  ctx.save();ctx.translate(cx,cy);ctx.rotate(-player.rotation.y);ctx.fillStyle='#f4e9d1';ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.restore();
 }
 function drawWorldMap(){
@@ -1649,7 +1649,7 @@ function animate(){
    if(Math.abs(driveSpeed)<.08)driveSpeed=0;
    const oldRotation=currentVehicle.rotation.y;
    const speedRatio=Math.min(Math.abs(driveSpeed)/24,1);
-    const steeringRate=(.065+.27*speedRatio);
+    const steeringRate=(.025+.16*speedRatio);
     const steeredRotation=oldRotation-steering*steeringRate*dt*(driveSpeed>=0?1:-1);
    if(!vehicleCollisionAt(currentVehicle.position,steeredRotation,currentVehicle))currentVehicle.rotation.y=steeredRotation;
    const oldPosition=currentVehicle.position.clone();
@@ -1668,7 +1668,7 @@ function animate(){
     if(crashCooldown<=0){playImpact();const pedestrian=collision==='pedestrian';showToast(pedestrian?'The car stopped before reaching the pedestrian.':'Vehicle collision: '+collision+'.');crashCooldown=1.0;}
    }
    currentVehicle.position.x=THREE.MathUtils.clamp(currentVehicle.position.x,-245,245);currentVehicle.position.z=THREE.MathUtils.clamp(currentVehicle.position.z,-235,235);
-   player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;
+   player.position.copy(currentVehicle.position);player.rotation.y=currentVehicle.rotation.y;
    $('drive-info').textContent='DRIVING · '+Math.round(Math.abs(driveSpeed)*3.6)+' KM/H · FUEL '+Math.round(fuel)+'%';
   }else{
    $('drive-info').textContent='ON FOOT';
