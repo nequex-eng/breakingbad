@@ -550,6 +550,7 @@ const salvageItems=[
  makeActivityItem('salvage-watch','Silver watch',-22,-142,0x9b927e,'salvage')
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
+let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI;
 function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
@@ -629,7 +630,7 @@ function setClickDestination(x,z){
  if(!buildClickMovePath(point))return;
  customWaypoint=point.clone();saveGame();drawMiniMap();updateObjectiveDistance();
 }
-let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI, pitch=-.08, dragging=false, lastX=0,lastY=0;
+let pitch=-.08, dragging=false, lastX=0,lastY=0;
 player.rotation.y=yaw;
 const cameraTarget=new THREE.Vector3();
 
