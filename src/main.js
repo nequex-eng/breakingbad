@@ -168,6 +168,8 @@ for(const x of [-23,-15,-7,1,9,17,25]){
  box(motel,x,5.55,6.75,4.5,.12,.2,materials.white);
 }
 box(motel,-28,2.2,6.65,1.2,4.4,.25,materials.dark);box(motel,28,2.2,6.65,1.2,4.4,.25,materials.dark);
+makeFacadeSign(motel,'ROUTE 66 MOTEL',0,7.8,7.35,22,1.8,{bg:'#7b3028',fg:'#fff0c9',accent:'#e5b64e',sub:'VACANCY · FREE WIFI'});
+for(const x of [-25,25]){const lamp=box(motel,x,5.4,7.1,.42,.55,.22,mat(0xf0ca78),false);}
 
 // Distant mesa silhouettes
 for(let i=0;i<13;i++){
@@ -191,24 +193,79 @@ for(let i=0;i<100;i++){
  }
 }
 
+// High-contrast, physically mounted storefront signs with readable lettering at street level.
+function makeFacadeSign(parent,text,x,y,z,width,height,options={}){
+ const {bg='#173b35',fg='#fff0c9',accent='#d7b45d',sub='',font='Arial Black'}=options;
+ const board=box(parent,x,y,z,width,height,.22,mat(bg),false);
+ const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle=bg;ctx.fillRect(0,0,1024,256);
+ ctx.fillStyle=accent;ctx.fillRect(0,0,1024,13);ctx.fillRect(0,243,1024,13);
+ ctx.strokeStyle=fg;ctx.lineWidth=7;ctx.strokeRect(20,20,984,216);
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ const main=String(text).toUpperCase();let size=main.length>19?66:main.length>13?82:104;
+ ctx.font='900 '+size+'px '+font;
+ while(ctx.measureText(main).width>900&&size>40){size-=3;ctx.font='900 '+size+'px '+font;}
+ ctx.fillStyle=fg;ctx.shadowColor='#0008';ctx.shadowBlur=7;ctx.fillText(main,512,sub?108:132);
+ if(sub){ctx.shadowBlur=0;ctx.fillStyle=accent;ctx.font='bold 34px Arial';ctx.fillText(String(sub).toUpperCase(),512,194);}
+ const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+ const face=new THREE.Mesh(new THREE.PlaneGeometry(width*.94,height*.82),new THREE.MeshBasicMaterial({map:texture,toneMapped:false}));
+ face.position.set(x,y,z+.125);parent.add(face);
+ for(const side of [-1,1]){const lamp=box(parent,x+side*width*.38,y+height*.66,z+.1,.1,.12,.12,mat(0xe8d49a),false);}
+ board.userData.signText=main;return board;
+}
+function addWallTrim(parent,width,z,y,color=0x765b43){
+ const trimMat=mat(color);box(parent,0,y,z,width,.16,.18,trimMat,false);
+ box(parent,0,.24,z,width,.2,.2,trimMat,false);
+}
+
 // Procedural buildings
-function house(x,z,color,scale=1){
- const g=new THREE.Group(); g.position.set(x,0,z); scene.add(g);
- box(g,0,2.1,0,12*scale,4.2*scale,9*scale,mat(color));
- box(g,0,4.35*scale,0,12.7*scale,.35*scale,9.7*scale,materials.dark);
+function house(x,z,color,scale=1,accent=0x80634c){
+ const g=new THREE.Group();g.position.set(x,0,z);scene.add(g);
+ const w=12*scale,d=9*scale,h=4.2*scale,front=d/2;
+ const stucco=mat(color),trim=mat(accent),roof=mat(0x4b4941);
+ box(g,0,h/2,0,w,h,d,stucco);
+ box(g,0,h+.12,0,w+.8,.28,d+.8,roof);
+ box(g,0,h-.18,front+.08,w+.12,.2,.18,trim);
+ box(g,0,.22,front+.08,w+.12,.22,.18,trim);
  for(const wx of [-3.5,3.5]){
-  box(g,wx*scale,2.45*scale,4.56*scale,1.65*scale,1.45*scale,.12,materials.glass);
-  box(g,wx*scale,2.45*scale,4.64*scale,1.8*scale,.12,.16,materials.white);
+  const px=wx*scale;
+  box(g,px,2.45*scale,front+.09,1.78*scale,1.58*scale,.12,materials.glass);
+  box(g,px,2.45*scale,front+.17,1.9*scale,.12,.13,materials.white);
+  box(g,px,1.62*scale,front+.17,1.9*scale,.12,.13,materials.white);
+  for(const side of [-1,1])box(g,px+side*.98*scale,2.45*scale,front+.12,.13,1.7*scale,.16,trim);
+  box(g,px,2.45*scale,front+.19,.09,1.5*scale,.08,trim,false);
+  box(g,px,2.45*scale,front+.19,1.65*scale,.08,.08,trim,false);
+  // Short stucco window awning with brackets.
+  const awning=box(g,px,3.35*scale,front+.42,2.05*scale,.16,.72,trim);awning.rotation.x=-.08;
+  for(const side of [-1,1])box(g,px+side*.82*scale,3.08*scale,front+.34,.08,.48,.08,roof);
  }
- box(g,0,1.15*scale,4.58*scale,1.4*scale,2.3*scale,.15,materials.rust);
+ box(g,0,1.15*scale,front+.1,1.48*scale,2.3*scale,.18,materials.rust);
+ box(g,0,2.26*scale,front+.2,1.62*scale,.12,.08,trim);
+ box(g,.42*scale,1.15*scale,front+.22,.08,.08,.06,mat(0xd2b66d),false);
+ // Porch landing, two steps, pillars and warm wall lights.
+ box(g,0,.16*scale,front+.75,3.4*scale,.28*scale,1.35*scale,mat(0x8d8577),false);
+ for(const step of [0,1])box(g,0,(.08+step*.12)*scale,front+.95+step*.34,2.5*scale,.16*scale,.62*scale,mat(0xaaa08e),false);
+ for(const px of [-2.3,2.3])box(g,px*scale,1.8*scale,front+.48,.18*scale,3.5*scale,.22*scale,trim);
+ // House number plaque and mailbox make every frontage distinct.
+ const number=String(Math.abs(Math.round(x*3+z*2))%900+100);
+ box(g,-4.65*scale,3.15*scale,front+.16,.95*scale,.5*scale,.12*scale,roof,false);
+ const plaque=document.createElement('canvas');plaque.width=256;plaque.height=128;
+ const pc=plaque.getContext('2d');pc.fillStyle='#303a34';pc.fillRect(0,0,256,128);pc.fillStyle='#f0d9a1';pc.font='bold 68px Arial';pc.textAlign='center';pc.textBaseline='middle';pc.fillText(number,128,66);
+ const ptex=new THREE.CanvasTexture(plaque);ptex.colorSpace=THREE.SRGBColorSpace;
+ const pmesh=new THREE.Mesh(new THREE.PlaneGeometry(.82*scale,.38*scale),new THREE.MeshBasicMaterial({map:ptex,toneMapped:false}));pmesh.position.set(-4.65*scale,3.15*scale,front+.235);g.add(pmesh);
+ box(g,4.7*scale,1.05*scale,front+.7,.7*scale,.5*scale,.32*scale,trim);
+ box(g,4.7*scale,1.32*scale,front+.7,.78*scale,.08*scale,.36*scale,roof);
+ const sconceMat=new THREE.MeshStandardMaterial({color:0xffd59a,emissive:0xffad50,emissiveIntensity:.45});
+ for(const px of [-1.25,1.25]){box(g,px,2.2*scale,front+.24,.18*scale,.42*scale,.12*scale,roof);box(g,px,2.2*scale,front+.32,.12*scale,.27*scale,.08*scale,sconceMat,false);}
  return g;
 }
 house(-30,-38,0xc5b295,1.15);
 house(-58,-38,0xd2c5aa,1);
 house(8,-44,0xb5a58c,1);
 house(42,-42,0xc9bda7,1.1);
-house(-70,38,0xb9aa94,.9);
-house(70,42,0xd1c1a5,1.1);
+house(-70,38,0xb9aa94,.9,0x795b49);
+house(70,42,0xd1c1a5,1.1,0x66725d);
 
 // Car wash landmark
 const wash=new THREE.Group(); wash.position.set(36,0,28); scene.add(wash);
@@ -219,8 +276,9 @@ box(wash,0,3.8,9.28,18,.12,.12,materials.white);
 for(let x of [-8,-3,3,8]) box(wash,x,1.8,9.22,.22,3.5,.2,materials.dark);
 for(let x of [-11,11]) box(wash,x,1.9,9.25,3.2,3.7,.3,materials.glass);
 box(wash,0,.12,13,31,.2,8,materials.asphalt);
-const sign=box(wash,0,7,0,13,1.4,.3,materials.blue);
-sign.position.set(0,7,9.8);
+const sign=box(wash,0,7,0,13,1.4,.3,materials.blue);sign.position.set(0,7,9.8);
+makeFacadeSign(wash,'A-1 CAR WASH',0,7,9.98,13,1.4,{bg:'#183b55',fg:'#fff1cc',accent:'#e3b34f',sub:'FULL SERVICE · OPEN DAILY'});
+addWallTrim(wash,28,9.18,5.35,0xb5a27c);
 
 // Small diner and convenience store
 const diner=new THREE.Group(); diner.position.set(-82,0,22); scene.add(diner);
@@ -229,30 +287,96 @@ box(diner,0,5.1,0,25,.35,16,materials.red);
 box(diner,0,3.5,7.6,15,1.1,.25,materials.red);
 for(let x of [-8,-3,3,8]) box(diner,x,2.5,7.7,2,2.2,.15,materials.glass);
 box(diner,0,.12,13,27,.2,7,materials.asphalt);
+// Signature Los Pollos Hermanos frontage: red fascia, gold lettering and striped awning.
+box(diner,0,5.42,7.72,23,.28,.32,mat(0x9c3028));
+makeFacadeSign(diner,'LOS POLLOS HERMANOS',0,5.62,7.94,19.5,1.45,{bg:'#9e2926',fg:'#fff0c9',accent:'#e5b94f',sub:'FAMOUS FRIED CHICKEN'});
+for(let x=-9;x<=9;x+=3){const stripe=box(diner,x,3.82,8.02,2.9,.48,.3,mat((x/3)%2===0?0xe8dfc7:0xb8332c));stripe.rotation.x=-.12;}
+box(diner,0,.28,8.15,4.8,.42,.5,mat(0x403c34));
+for(const x of [-10.5,10.5]){box(diner,x,2.7,7.9,.18,4.2,.18,mat(0x5a5144));box(diner,x,4.9,8.02,.35,.35,.3,mat(0xf1cf7a),false);}
+makeFacadeSign(diner,'DRIVE THRU',-8.6,1.25,8.05,4.2,.72,{bg:'#263b32',fg:'#fff0c9',accent:'#d4ae57'});
 
 // A warehouse in the distance
 const warehouse=new THREE.Group(); warehouse.position.set(100,0,-70); scene.add(warehouse);
 box(warehouse,0,5,0,38,10,30,materials.dark);
 for(let x of [-12,0,12]) box(warehouse,x,4.2,15.1,8,7,.3,materials.rust);
 box(warehouse,0,10.2,0,39,.4,31,materials.rust);
+makeFacadeSign(warehouse,'INDUSTRIAL SUPPLY',0,8.65,15.35,25,1.7,{bg:'#313b3a',fg:'#e9e0cb',accent:'#c18a4b',sub:'ALBUQUERQUE · NEW MEXICO'});
+for(const x of [-16,16]){box(warehouse,x,1.1,15.25,1.3,2.1,.2,mat(0x5b5549));box(warehouse,x,2.4,15.38,.7,.16,.08,mat(0xd1b36b),false);}
+
+// A full roadside Los Pollos Hermanos restaurant with a dedicated parking apron.
+const losPollos=new THREE.Group();losPollos.position.set(150,0,65);scene.add(losPollos);
+const polloCream=mat(0xe6d8b8),polloRed=mat(0x9f3028),polloGold=mat(0xd8ad4e);
+box(losPollos,0,2.85,0,34,5.7,22,polloCream);
+box(losPollos,0,5.82,0,35,.34,23,polloRed);
+box(losPollos,0,5.35,11.25,33,.42,.34,polloRed);
+for(const x of [-12,-6,6,12]){
+ box(losPollos,x,2.75,11.16,4.2,2.55,.18,materials.glass);
+ box(losPollos,x,4.12,11.25,4.35,.12,.22,polloGold);
+ box(losPollos,x,1.38,11.27,4.35,.12,.22,polloGold);
+}
+box(losPollos,0,2.25,11.35,2.4,4.3,.25,polloRed);
+box(losPollos,0,.13,16,39,.22,11,materials.asphalt,false);
+box(losPollos,0,.04,23,44,.08,30,mat(0x8d826e),false);
+for(const x of [-15,-7,7,15])for(const z of [18,28])box(losPollos,x,.09,z,5,.04,.14,mat(0xe5dfca),false);
+makeFacadeSign(losPollos,'LOS POLLOS HERMANOS',0,6.9,11.65,29,1.75,{bg:'#a12c26',fg:'#fff0ca',accent:'#e6b84d',sub:'FAMILY RESTAURANT · FRESH DAILY'});
+for(const x of [-14,14]){
+ const post=box(losPollos,x,4.3,11.62,.18,2.1,.18,polloGold);
+}
+makeFacadeSign(losPollos,'DRIVE THRU',18,1.65,10.95,5.4,.85,{bg:'#253d34',fg:'#fff0c9',accent:'#dfb75b'});
+// Roadside pylon sign, visible from the avenue.
+const polloPylon=new THREE.Group();polloPylon.position.set(172,0,49);scene.add(polloPylon);
+box(polloPylon,0,3.3,0,.34,6.6,.38,mat(0x5a5142));
+box(polloPylon,0,6.2,.16,7.2,2.1,.42,polloRed);
+makeFacadeSign(polloPylon,'LOS POLLOS',0,6.25,.4,6.9,1.85,{bg:'#a12c26',fg:'#fff0c9',accent:'#e7bd58',sub:'HERMANOS'});
 
 // Gas station and repair stop on the edge of the highway.
 const gasStation=new THREE.Group();gasStation.position.set(78,0,24);scene.add(gasStation);
 box(gasStation,0,2.2,0,20,4.4,13,materials.cream);box(gasStation,0,4.55,0,21,.3,14,materials.red);box(gasStation,0,3.25,6.62,13,1.1,.2,materials.blue);
 for(const x of [-5,0,5]){box(gasStation,x,.85,11,1.1,1.7,.9,materials.red);box(gasStation,x,1.8,11,.75,.25,.65,materials.white);}
 box(gasStation,0,.08,14,27,.16,10,materials.asphalt,false);
+makeFacadeSign(gasStation,'MESA PETROLEUM',0,4.1,6.82,14,1.35,{bg:'#1e4658',fg:'#fff0c9',accent:'#e2b34f',sub:'GAS · MARKET · SERVICE'});
+for(const x of [-5,0,5])makeFacadeSign(gasStation,'GAS',x,2.55,11.48,1.05,.42,{bg:'#a92f2a',fg:'#fff5d8',accent:'#e9bf55'});
 
 // Parked cars
 const vehicleRegistry=[];
 function car(x,z,color,rotation=0){
- const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=rotation; scene.add(g);vehicleRegistry.push(g);
- box(g,0,.8,0,2.5,1.2,5,mat(color));
- box(g,0,1.55,-.1,1.9,.8,2.8,materials.glass);
- box(g,0,.45,2.52,2.25,.22,.16,materials.dark);box(g,0,.45,-2.52,2.25,.22,.16,materials.dark);
- for(const side of [-1,1]){box(g,side*.92,.88,2.48,.42,.2,.1,materials.yellow);box(g,side*.92,.88,-2.48,.42,.2,.1,materials.red);box(g,side*1.22,1.52,.1,.28,.18,.38,materials.dark);}
- for(let wx of [-1.25,1.25]) for(let wz of [-1.65,1.65]){
-  const w=cylinder(g,wx,.48,wz,.48,.48,.28,materials.dark,12); w.rotation.z=Math.PI/2;
+ const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=rotation;scene.add(g);vehicleRegistry.push(g);
+ const paint=new THREE.MeshStandardMaterial({color,roughness:.38,metalness:.42}),trim=mat(0x272b2a),chrome=mat(0xb6b8b0),rubber=mat(0x202322),lamp=new THREE.MeshStandardMaterial({color:0xffedc9,emissive:0xffd99a,emissiveIntensity:.16,roughness:.22});
+ // Sculpted lower body, hood, cabin and rear deck.
+ box(g,0,.78,0,2.5,1.12,5,paint);
+ box(g,0,1.16,1.62,2.42,.34,1.68,paint);
+ box(g,0,1.12,-1.82,2.4,.32,1.18,paint);
+ box(g,0,1.57,-.1,1.96,.78,2.82,paint);
+ const windshield=box(g,0,1.61,1.08,1.78,.62,.065,materials.glass);windshield.rotation.x=-.26;
+ const rear=box(g,0,1.59,-1.55,1.78,.58,.065,materials.glass);rear.rotation.x=.3;
+ for(const side of [-1,1]){
+  box(g,side*.99,1.56,-.16,.055,.58,1.15,materials.glass);
+  box(g,side*.99,1.56,.72,.055,.5,.55,materials.glass);
+  box(g,side*.99,1.56,-1.02,.055,.5,.55,materials.glass);
+  box(g,side*1.255,.76,-.05,.06,.36,4.45,trim);
+  box(g,side*1.27,1.02,-.05,.045,.07,2.7,chrome,false);
+  box(g,side*1.18,1.28,.22,.24,.16,.28,trim);
+  box(g,side*1.2,1.18,.25,.16,.07,.12,chrome,false);
+  for(const wz of [-1.68,1.68]){
+   const w=cylinder(g,side*1.22,.49,wz,.47,.47,.3,rubber,16);w.rotation.z=Math.PI/2;
+   const hub=cylinder(g,side*1.39,.49,wz,.28,.28,.31,chrome,14);hub.rotation.z=Math.PI/2;
+   cylinder(g,side*1.405,.49,wz,.1,.1,.32,trim,12).rotation.z=Math.PI/2;
+  }
+  box(g,side*1.18,1.13,-.65,.18,.09,.12,chrome,false);
+  box(g,side*1.25,1.35,.08,.2,.16,.2,paint);
  }
+ // Front grille, chrome bumper, headlamps and rear lamps.
+ box(g,0,.7,2.52,1.05,.38,.1,trim);
+ box(g,0,.51,2.58,2.28,.17,.16,chrome);
+ for(let i=0;i<7;i++)box(g,-.38+i*.127,.7,2.585,.025,.25,.025,chrome,false);
+ for(const side of [-1,1]){
+  box(g,side*.91,.98,2.55,.42,.3,.08,lamp,false);
+  box(g,side*.91,.96,-2.52,.42,.27,.08,mat(0x9e3432),false);
+  box(g,side*.8,.98,-2.58,.22,.15,.05,mat(0xe2b66c),false);
+ }
+ box(g,0,.5,-2.58,2.28,.16,.15,chrome);
+ box(g,0,.63,2.64,.72,.2,.045,mat(0xd7d5c8),false);
+ box(g,0,.62,-2.66,.72,.2,.045,mat(0xd7d5c8),false);
  return g;
 }
 const playerCar=car(-190,165,0xe8e4d6,0);
@@ -359,6 +483,7 @@ const buildingBlockers=[
  {x:8,z:-44,halfX:6,halfZ:4.5,pedX:7.5,pedZ:6},{x:42,z:-42,halfX:6.6,halfZ:4.95,pedX:8,pedZ:6.5},
  {x:-70,z:38,halfX:5.4,halfZ:4.05,pedX:7,pedZ:5.5},{x:70,z:42,halfX:6.6,halfZ:4.95,pedX:8,pedZ:6.5},
  {x:36,z:28,halfX:14.5,halfZ:9,pedX:15.5,pedZ:9.7},{x:-82,z:22,halfX:12,halfZ:7.5,pedX:13,pedZ:8.5},
+ {x:150,z:65,halfX:17,pedX:18.5,halfZ:11,pedZ:12},
  {x:100,z:-70,halfX:19,halfZ:15,pedX:20,pedZ:16},{x:78,z:24,halfX:10,halfZ:6.5,pedX:10,pedZ:7},
  {x:-145,z:-76,halfX:28,halfZ:6.5,pedX:28.5,pedZ:7.5}
 ];
@@ -506,9 +631,21 @@ const beard=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),mat(0x35322e));bea
 box(body,0,2.005,.32,.22,.045,.07,glassMat,false);
 const playerArms=[],playerLegs=[];
 for(const side of [-1,1]){
- const arm=cylinder(body,side*.48,1.3,0,.14,.17,.82,jacketMat,8);arm.rotation.z=side*.12;playerArms.push(arm);
- const leg=cylinder(body,side*.2,.43,0,.16,.19,.72,pantsMat,9);playerLegs.push(leg);
+ const armPivot=new THREE.Group();armPivot.position.set(side*.48,1.72,0);body.add(armPivot);
+ cylinder(armPivot,0,-.4,0,.14,.17,.82,jacketMat,10);armPivot.rotation.z=side*.12;playerArms.push(armPivot);
+ const legPivot=new THREE.Group();legPivot.position.set(side*.2,.78,0);body.add(legPivot);
+ cylinder(legPivot,0,-.36,0,.16,.19,.72,pantsMat,10);
+ box(legPivot,0,-.72,.12,.36,.17,.58,materials.shoe);
+ playerLegs.push(legPivot);
 }
+// Tailored lapels, collar, buttons, belt and jacket pockets.
+for(const side of [-1,1]){
+ const lapel=box(body,side*.16,1.58,.31,.18,.48,.08,mat(0xc8b58f),false);lapel.rotation.z=side*.2;
+ box(body,side*.19,1.05,.2,.34,.13,.06,mat(0x4c4b40),false);
+ box(body,side*.19,1.46,.31,.25,.22,.055,mat(0x9c896b),false);
+}
+box(body,0,1.79,.3,.36,.12,.09,shirtMat,false);
+for(const y of [1.55,1.35,1.15])cylinder(body,0,y,.31,.025,.025,.025,mat(0x343a36),8);
 player.position.set(0,0,0);
 
 function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
@@ -533,8 +670,20 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
   const legPivot=new THREE.Group();legPivot.position.set(side*.19,.78,0);root.add(legPivot);
   cylinder(legPivot,0,-.375,0,.15,.18,.75,mat(pants),8);
   box(legPivot,0,-.72,.12,.32,.15,.5,materials.shoe);
+  box(legPivot,0,-.39,.095,.3,.1,.2,mat(0x383a37),false);
   legs.push(legPivot);
  }
+ // Clothing seams, collar, front placket and pockets break up the old featureless torso.
+ const shirtMat=mat(0xe0d7c4),darkCloth=mat(0x343a35);
+ box(root,0,1.86,.315,.23,.16,.08,shirtMat,false);
+ box(root,0,1.39,.435,.045,.64,.035,darkCloth,false);
+ for(const y of [1.56,1.38,1.2])cylinder(root,0,y,.46,.025,.025,.025,mat(0xc9b98e),8);
+ for(const side of [-1,1]){
+  box(root,side*.22,1.45,.39,.24,.28,.06,mat(0x77736a),false);
+  box(root,side*.45,1.02,0,.31,.12,.28,mat(0x4a4a43),false);
+ }
+ const faceStubble=mat(0x4b4138);
+ for(const side of [-1,1]){const brow=box(root,side*.105,2.22,.29,.13,.035,.045,faceStubble,false);}
  return {root,phase:Math.random()*6,arms,legs,walkPhase:Math.random()*Math.PI*2};
 }
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
