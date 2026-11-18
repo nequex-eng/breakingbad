@@ -267,7 +267,7 @@ for(const x of [-.78,.78]){
  const lens=box(playerCar,x,1.36,4.03,.34,.22,.08,rvHeadlightMaterial,false);
  const beam=new THREE.PointLight(0xffdca0,0,29,2);beam.position.set(x,1.36,4.03);playerCar.add(beam);rvHeadlights.push({beam,lens});
 }
-car(19,15,0x8d8d86,-.4); car(-93,19,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
+car(19,15,0x8d8d86,-.4); car(-104,35,0x6e777c,.2); car(51,-20,0x9a483b,-.2);
 const patrolCar=car(98,23,0x30383d,0);const patrolRed=box(patrolCar,-.38,2.18,0,.42,.16,.32,mat(0xd94d43));const patrolBlue=box(patrolCar,.38,2.18,0,.42,.16,.32,mat(0x4b86d8));
 const trafficCars=[
  {root:car(-210,-4,0x87918d,Math.PI/2),direction:1,speed:12},
@@ -381,7 +381,7 @@ function vehiclePathHitsPedestrian(from,to,rotation,vehicleRoot=null){
 }
 function vehicleCollisionAt(position,rotation,ignoreRoot=null){
  if(!movingVehicleRoots.includes(ignoreRoot)&&(position.x< -239||position.x>239||position.z< -229||position.z>229))return 'city boundary';
- for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,b,ignoreRoot))return 'building';
+ for(const b of vehicleBlockers)if(vehicleOverlapsBox(position,b,ignoreRoot,rotation))return 'building';
  for(const other of vehicleRegistry){if(other===ignoreRoot)continue;if(vehicleOverlapsVehicle(position,rotation,other,ignoreRoot))return 'another vehicle';}
  for(const pedestrian of allPedestrianActors)if(pedestrian.root.visible&&vehicleOverlapsPedestrian(position,rotation,pedestrian,ignoreRoot))return 'pedestrian';
  return '';
@@ -1113,7 +1113,7 @@ renderer.domElement.addEventListener('pointerup',e=>{
 renderer.domElement.addEventListener('pointercancel',()=>{dragging=false;scenePointerStart=null;});
 renderer.domElement.addEventListener('pointermove',e=>{
  if(!dragging)return;
- yaw-=(e.clientX-lastX)*.004; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.003));
+ yaw-=(e.clientX-lastX)*.0028; pitch=Math.max(-.12,Math.min(.22,pitch+(e.clientY-lastY)*.0025));
  lastX=e.clientX;lastY=e.clientY;
 });
 function bindHold(id,code){
