@@ -325,7 +325,11 @@ for(const x of [-12,-6,6,12]){
  box(losPollos,x,1.38,11.27,4.35,.12,.22,polloGold);
 }
 // Glass double entrance with gold handles and a red portal frame.
-for(const x of [-1.92,1.92]){\n  box(losPollos,x,2.15,11.02,1.08,4.05,.09,polloRed,false);\n  box(losPollos,x,2.15,11.17,.98,3.96,.055,materials.glass,false);\n  cylinder(losPollos,x+(x<0?.34:-.34),2.05,11.27,.045,.045,.48,polloGold,8);\n }
+for(const x of [-1.92,1.92]){
+  box(losPollos,x,2.15,11.02,1.08,4.05,.09,polloRed,false);
+  box(losPollos,x,2.15,11.17,.98,3.96,.055,materials.glass,false);
+  cylinder(losPollos,x+(x<0?.34:-.34),2.05,11.27,.045,.045,.48,polloGold,8);
+ }
 box(losPollos,0,4.35,11.15,2.75,.22,.35,polloRed);
 box(losPollos,0,.12,11.15,2.75,.24,.35,polloGold);
 box(losPollos,0,.13,16,39,.22,11,materials.asphalt,false);
