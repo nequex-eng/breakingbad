@@ -138,6 +138,10 @@ box(scene,100,0.006,-26,12,.025,52,materials.asphalt,false);
 box(scene,93,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 box(scene,107,0.012,-26,1.8,.035,52,materials.sidewalk,false);
 for(let z=-44;z<=-8;z+=18)box(scene,100,.03,z,.14,.03,7,materials.yellow,false);
+// Dedicated access road connects the restaurant parking lot to the main avenue.
+box(scene,150,.008,27,12,.028,54,materials.asphalt,false);
+box(scene,143.8,.014,27,1.5,.035,54,materials.sidewalk,false);box(scene,156.2,.014,27,1.5,.035,54,materials.sidewalk,false);
+for(let z=4;z<=48;z+=18)box(scene,150,.035,z,.14,.03,7,materials.yellow,false);
 box(scene,100,.012,-50,24,.025,10,materials.asphalt,false);
  // Dust road from the remote RV camp to the Route 66 access road.
  const desertTrack=mat(0x927b5d),trackRuts=mat(0x796448),trackEdge=mat(0xa08b6d);
@@ -306,7 +310,13 @@ for(const x of [-16,16]){box(warehouse,x,1.1,15.25,1.3,2.1,.2,mat(0x5b5549));box
 // A full roadside Los Pollos Hermanos restaurant with a dedicated parking apron.
 const losPollos=new THREE.Group();losPollos.position.set(150,0,65);scene.add(losPollos);
 const polloCream=mat(0xe6d8b8),polloRed=mat(0x9f3028),polloGold=mat(0xd8ad4e);
-box(losPollos,0,2.85,0,34,5.7,22,polloCream);
+// Open restaurant shell: floor, four walls and roof leave a real doorway into the dining room.
+box(losPollos,0,.14,0,34,.28,22,mat(0xc7b99d),false);
+box(losPollos,-16.85,2.85,0,.3,5.42,22,polloCream);
+box(losPollos,16.85,2.85,0,.3,5.42,22,polloCream);
+box(losPollos,0,2.85,-10.85,34,5.42,.3,polloCream);
+for(const [x,w] of [[-15.5,3],[-9,1.8],[-2.65,2.7],[2.65,2.7],[9,1.8],[15.5,3]])box(losPollos,x,2.85,10.85,w,5.42,.3,polloCream);
+box(losPollos,0,5.65,0,34,.3,22,polloCream,false);
 box(losPollos,0,5.82,0,35,.34,23,polloRed);
 box(losPollos,0,5.35,11.25,33,.42,.34,polloRed);
 for(const x of [-12,-6,6,12]){
@@ -314,7 +324,14 @@ for(const x of [-12,-6,6,12]){
  box(losPollos,x,4.12,11.25,4.35,.12,.22,polloGold);
  box(losPollos,x,1.38,11.27,4.35,.12,.22,polloGold);
 }
-box(losPollos,0,2.25,11.35,2.4,4.3,.25,polloRed);
+// Glass double entrance with gold handles and a red portal frame.
+for(const x of [-1.28,1.28]){
+ box(losPollos,x,2.15,11.02,1.18,4.05,.09,polloRed,false);
+ box(losPollos,x,2.15,11.17,1.08,3.96,.055,materials.glass,false);
+ cylinder(losPollos,x+(x<0?.42:-.42),2.05,11.27,.045,.045,.48,polloGold,8);
+}
+box(losPollos,0,4.35,11.15,2.75,.22,.35,polloRed);
+box(losPollos,0,.12,11.15,2.75,.24,.35,polloGold);
 box(losPollos,0,.13,16,39,.22,11,materials.asphalt,false);
 box(losPollos,0,.04,23,44,.08,30,mat(0x8d826e),false);
 for(const x of [-15,-7,7,15])for(const z of [18,28])box(losPollos,x,.09,z,5,.04,.14,mat(0xe5dfca),false);
@@ -323,6 +340,35 @@ for(const x of [-14,14]){
  const post=box(losPollos,x,4.3,11.62,.18,2.1,.18,polloGold);
 }
 makeFacadeSign(losPollos,'DRIVE THRU',18,1.65,10.95,5.4,.85,{bg:'#253d34',fg:'#fff0c9',accent:'#dfb75b'});
+// Dining room: red booths, polished tables, pendant lights, menu boards and service counter.
+const polloInterior=mat(0xdbcba9),polloWood=mat(0x6b4934),polloSeat=mat(0x9e3029),polloSteel=mat(0x737c78);
+box(losPollos,0,.32,-2.1,31,.12,15,polloInterior,false);
+box(losPollos,0,1.18,-9.8,27,1.65,.18,polloWood);
+box(losPollos,0,2.12,-9.68,27,.18,.22,polloGold);
+box(losPollos,0,1.12,1.6,24,1.45,.42,polloWood);
+box(losPollos,0,1.88,1.6,24,.12,.46,polloGold);
+for(const x of [-11,-7,7,11]){
+ box(losPollos,x,.72,-3.8,3.1,.18,2.1,polloWood);
+ for(const side of [-1,1])box(losPollos,x,1.28,-3.8+side*.86,3.1,1.05,.32,polloSeat);
+ box(losPollos,x,.83,-3.8,2.7,.12,1.65,polloGold);
+}
+for(const x of [-8,0,8]){
+ cylinder(losPollos,x,4.65,-1.8,.07,.07,1.9,polloGold,8);
+ const shade=new THREE.Mesh(new THREE.ConeGeometry(.72,.42,12,1,true),new THREE.MeshStandardMaterial({color:0x8f3027,side:THREE.DoubleSide,roughness:.55}));shade.position.set(x,3.72,-1.8);shade.rotation.x=Math.PI;losPollos.add(shade);
+ const bulb=new THREE.PointLight(0xffd39b,.34,8,2);bulb.position.set(x,3.55,-1.8);losPollos.add(bulb);
+}
+makeFacadeSign(losPollos,'FRESH CHICKEN · FAMILY MEALS',-9,4.55,-10.56,12,.9,{bg:'#263c34',fg:'#fff0c9',accent:'#e2b54f'});
+makeFacadeSign(losPollos,'ORDER HERE',0,3.95,1.84,8.5,1.0,{bg:'#a12c26',fg:'#fff0c9',accent:'#e2b54f'});
+makeFacadeSign(losPollos,'PICK UP',10,3.95,-9.52,6.2,.9,{bg:'#263c34',fg:'#fff0c9',accent:'#e2b54f'});
+// Decorative kitchen pass and display case; no real-world preparation instructions.
+box(losPollos,-8,1.35,-7.2,5.2,1.9,2.1,polloSteel);
+for(const x of [-9.4,-7.7,-6]){
+ box(losPollos,x,2.42,-7.2,1.15,.12,1.5,mat(0x303b3a));
+ cylinder(losPollos,x,2.55,-7.2,.48,.48,.1,mat(0x171d1c),12);
+}
+box(losPollos,8,1.35,-7.2,5.5,1.8,1.8,polloWood);
+box(losPollos,8,2.15,-7.2,5.35,.12,1.7,materials.glass);
+for(const x of [6.5,8,9.5]){const chicken=new THREE.Mesh(new THREE.SphereGeometry(.36,10,8),mat(0xb97835));chicken.scale.set(1.2,.58,.8);chicken.position.set(x,2.05,-7.15);losPollos.add(chicken);}
 // Roadside pylon sign, visible from the avenue.
 const polloPylon=new THREE.Group();polloPylon.position.set(172,0,49);scene.add(polloPylon);
 box(polloPylon,0,3.3,0,.34,6.6,.38,mat(0x5a5142));
@@ -501,7 +547,12 @@ const buildingBlockers=[
  {x:36,z:28,halfX:14.5,halfZ:9,pedX:15.5,pedZ:9.7},{x:-82,z:22,halfX:12,halfZ:7.5,pedX:13,pedZ:8.5},
  {x:150,z:65,halfX:17,pedX:18.5,halfZ:11,pedZ:12},
  {x:100,z:-70,halfX:19,halfZ:15,pedX:20,pedZ:16},{x:78,z:24,halfX:10,halfZ:6.5,pedX:10,pedZ:7},
- {x:-145,z:-76,halfX:28,halfZ:6.5,pedX:28.5,pedZ:7.5}
+ {x:-145,z:-76,halfX:28,halfZ:6.5,pedX:28.5,pedZ:7.5},
+ // Los Pollos wall footprints leave a central pedestrian doorway open.
+ {x:133.15,z:65,halfX:.25,halfZ:11,pedX:.7,pedZ:11.4},{x:166.85,z:65,halfX:.25,halfZ:11,pedX:.7,pedZ:11.4},
+ {x:150,z:54.15,halfX:17,halfZ:.25,pedX:17.3,pedZ:.7},
+ ...[-15.5,-9,-2.65,2.65,9,15.5].map((x,i)=>({x:150+x,z:75.85,halfX:i===0||i===5?1.5:i===1||i===4?.9:1.35,halfZ:.2,pedX:i===0||i===5?1.7:i===1||i===4?1.1:1.55,pedZ:.65})),
+ ...[-12,-6,6,12].map(x=>({x:150+x,z:76.05,halfX:2.1,halfZ:.22,pedX:2.25,pedZ:.55}))
 ];
 const vehicleBlockers=buildingBlockers.map(({x,z,halfX,halfZ})=>({x,z,halfX,halfZ}));
 vehicleBlockers.push({x:73,z:35,halfX:.8,halfZ:.8},{x:78,z:35,halfX:.8,halfZ:.8},{x:83,z:35,halfX:.8,halfZ:.8});
@@ -714,6 +765,21 @@ function makeNPC(x,z,shirt,pants,skin=0xb98e6e){
  for(const side of [-1,1])box(root,side*.27,2.19,.015,.075,.22,.12,mat(0x3c3934),false);
  return {root,phase:Math.random()*6,arms,legs,walkPhase:Math.random()*Math.PI*2};
 }
+// Gustavo Fring: neat receding hair, narrow glasses, moustache, pale yellow shirt and dark tie.
+const gusNPC=makeNPC(150,61.5,0xe4d28e,0x343a43,0x9b765d);
+const genericCap=gusNPC.root.children.find(o=>o.geometry?.type==='SphereGeometry'&&Math.abs(o.position.y-2.27)<.02);if(genericCap)genericCap.visible=false;
+const gusHair=mat(0x252522),gusTie=mat(0x252a2b),gusFrame=mat(0x282c2b),gusMoustache=mat(0x40352d);
+for(const side of [-1,1]){
+ const temple=new THREE.Mesh(new THREE.SphereGeometry(.13,9,7),gusHair);temple.position.set(side*.255,2.2,-.01);temple.scale.set(.75,1.35,1);gusNPC.root.add(temple);
+ const lens=new THREE.Mesh(new THREE.TorusGeometry(.105,.018,6,16),gusFrame);lens.position.set(side*.105,2.15,.322);gusNPC.root.add(lens);
+ const glass=new THREE.Mesh(new THREE.CircleGeometry(.092,16),new THREE.MeshBasicMaterial({color:0x82918b,transparent:true,opacity:.24}));glass.position.set(side*.105,2.15,.321);gusNPC.root.add(glass);
+ box(gusNPC.root,side*.1,1.99,.315,.13,.035,.07,gusMoustache,false);
+}
+box(gusNPC.root,0,2.15,.322,.12,.025,.035,gusFrame,false);
+const tie=new THREE.Mesh(new THREE.ConeGeometry(.11,.72,4),gusTie);tie.position.set(0,1.43,.38);tie.rotation.x=Math.PI;gusNPC.root.add(tie);
+box(gusNPC.root,0,1.77,.37,.28,.1,.08,mat(0xf0e6c7),false);
+box(gusNPC.root,0,1.03,.42,.48,.1,.08,mat(0x393d3b),false);
+for(const y of [1.58,1.4,1.22])cylinder(gusNPC.root,.12,y,.43,.025,.025,.025,mat(0x6e634b),8);
 const jesseNPC=makeNPC(28,43,0x6f8069,0x343c3c);jesseNPC.root.rotation.y=-.35;
 const dinerNPC=makeNPC(-82,32,0x8b6555,0x343a43);dinerNPC.root.rotation.y=Math.PI;
 const warehouseNPC=makeNPC(100,-48,0x887b63,0x343a43);warehouseNPC.root.rotation.y=Math.PI;
@@ -727,7 +793,8 @@ const courierNPC=makeNPC(-64,31,0x6d5146,0x292f38,0x9b745b);
 const driverNPC=makeNPC(102,42,0x4f6970,0x303841,0x9b745b);
 const motelClerkNPC=makeNPC(-137,-66,0x70634f,0x343a43,0xb98e6e);
 const warehouseArchivistNPC=makeNPC(108,-51,0x706b58,0x343a43,0x9c775d);
-const pedestrianActors=[jesseNPC,dinerNPC,warehouseNPC,policeNPC,gasContactNPC,motelNPC,...ambientNPCs,witnessNPC,courierNPC,driverNPC,motelClerkNPC,warehouseArchivistNPC];
+const polloStaffNPC=makeNPC(158,62,0xb9c8b0,0x333b39,0x986f57);polloStaffNPC.root.rotation.y=0;
+const pedestrianActors=[jesseNPC,dinerNPC,warehouseNPC,policeNPC,gasContactNPC,motelNPC,...ambientNPCs,witnessNPC,courierNPC,driverNPC,motelClerkNPC,warehouseArchivistNPC,gusNPC,polloStaffNPC];
 const allPedestrianActors=[{root:player},...pedestrianActors];
 
 const locations=[
@@ -736,7 +803,8 @@ const locations=[
  {name:'DESERT WAREHOUSE',label:'THE WAREHOUSE',pos:new THREE.Vector3(100,0,-50),range:15,type:'warehouse'},
  {name:'GAS STATION',label:'THE GAS STATION',pos:new THREE.Vector3(78,0,38),range:14,type:'gas'},
  {name:'POLICE PATROL',label:'TALK TO THE OFFICER',pos:new THREE.Vector3(96,0,30),range:9,type:'police'},
- {name:'ROUTE 66 MOTEL',label:'THE ROUTE 66 MOTEL',pos:new THREE.Vector3(-132,0,-65),range:13,type:'motel'}
+ {name:'ROUTE 66 MOTEL',label:'THE ROUTE 66 MOTEL',pos:new THREE.Vector3(-132,0,-65),range:13,type:'motel'},
+ {name:'LOS POLLOS HERMANOS',label:'LOS POLLOS HERMANOS',pos:new THREE.Vector3(150,0,65),range:20,type:'pollo'}
 ];
 function worldLabel(text,x,z,color='#e8d9b8'){
  const c=document.createElement('canvas');c.width=512;c.height=112;const ctx=c.getContext('2d');
@@ -792,7 +860,7 @@ const rvCargoStrap=box(playerCar,0,3.47,-2.3,.12,.08,1.2,rvChrome);rvCargoStrap.
  for(const [x,z] of [[-26,-15],[-23,14],[25,-18],[26,16],[-15,23],[17,24]]){cylinder(desertCamp,x,.9,z,.32,.42,1.8,materials.cactus,7);box(desertCamp,x+.36,1,z,.2,.9,.2,materials.cactus);box(desertCamp,x+.26,1.35,z,.35,.18,.2,materials.cactus);}
  worldLabel('DESERT COOK SITE',-187,147,'#d7c29a');
 
-let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],cookState=['idle','cooking','ready','loaded','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=Number.isFinite(saved.cookProgress)?THREE.MathUtils.clamp(saved.cookProgress,0,1):0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
+let active=null,cash=Number.isFinite(saved.cash)?saved.cash:7300,missionStep=Number.isFinite(saved.missionStep)?saved.missionStep:0,dialogOpen=false,mapOpen=false,carWashShiftDone=!!saved.carWashShiftDone,localsTalked=Array.isArray(saved.localsTalked)?saved.localsTalked:[],polloState=['idle','preparing','ready','carried','served'].includes(saved.polloState)?saved.polloState:'idle',polloDeadline=Number.isFinite(saved.polloDeadline)?saved.polloDeadline:0,cookState=['idle','cooking','ready','loaded','sold'].includes(saved.cookState)?saved.cookState:'idle',cookProgress=Number.isFinite(saved.cookProgress)?THREE.MathUtils.clamp(saved.cookProgress,0,1):0,customWaypoint=Number.isFinite(saved.waypointX)&&Number.isFinite(saved.waypointZ)?new THREE.Vector3(saved.waypointX,0,saved.waypointZ):null;
 let cookPrep=Array.isArray(saved.cookPrep)?[0,1,2].map(i=>!!saved.cookPrep[i]):[false,false,false];
 const cookWorkPos=new THREE.Vector3(-180.5,0,166.2);
 const cookPackagePos=new THREE.Vector3(-177,0,167.3);
@@ -870,7 +938,7 @@ const salvageItems=[
 ];
 for(const item of salvageItems){item.collected=salvageCollected.includes(item.id);item.root.visible=!item.collected;}
 let yaw=Number.isFinite(saved.playerYaw)?saved.playerYaw:Math.PI;
-function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({gameClock,cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,updatedAt:Date.now()}));}catch{}}
+function saveGame(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({gameClock,cash,missionStep,carWashShiftDone,localsTalked,cookState,evidenceCollected,salvageCollected,deliveryState,deliveryDeadline,deliveryTargetIndex,fuel,waypointX:customWaypoint?.x??null,waypointZ:customWaypoint?.z??null,playerX:player.position.x,playerZ:player.position.z,playerYaw:yaw,carX:playerCar.position.x,carZ:playerCar.position.z,carRotation:playerCar.rotation.y,driving,cookPrep,cookProgress,rvCampVersion:1,polloState,polloDeadline,updatedAt:Date.now()}));}catch{}}
 if(Number.isFinite(saved.fuel))fuel=THREE.MathUtils.clamp(saved.fuel,0,100);
 if(Number.isFinite(saved.carX)){let sx=saved.carX,sz=Number.isFinite(saved.carZ)?saved.carZ:8,sr=Number.isFinite(saved.carRotation)?saved.carRotation:0;if(sx===8&&sz===-6){sx=-6;sz=8;sr=0;}playerCar.position.set(sx,0,sz);playerCar.rotation.y=sr;}
 if(saved.driving){driving=true;player.visible=false;player.position.copy(playerCar.position);player.rotation.y=playerCar.rotation.y;}
@@ -1212,6 +1280,33 @@ function interact(target){
    if(salvageCollected.length===salvageItems.length)showToast('Neighborhood salvage route complete · +$1,375 earned');
    updateHUD();saveGame();return;
   }
+ }else if(target.type==='pollo-gus'){
+  openDialogue('GUSTAVO FRING','Welcome to Los Pollos Hermanos. We take pride in doing things properly. A clean dining room, a courteous staff, and a customer who leaves satisfied. Is there something I can help you with?',[
+   {label:'Ask about the restaurant',run:()=>showToast('“Every detail matters. People remember how you make them feel.”')},
+   {label:'Offer to help during the lunch rush',run:()=>{if(polloState==='idle'||polloState==='served'){polloState='preparing';polloDeadline=Date.now()+9000;showToast('Gus assigns you a restaurant shift. An order is being prepared.');saveGame();}else showToast('Finish the current restaurant order first.');}},
+   {label:'Ask if he is hiring',run:()=>showToast('“We value reliability. Show me you can handle a simple shift first.”')},
+   {label:'Leave',run:()=>{}}
+  ]);return;
+ }else if(target.type==='pollo-order'){
+  if(polloState==='idle'||polloState==='served')openDialogue('ORDER COUNTER','Welcome. What can we get started for you?',[
+   {label:'Classic chicken meal · $18',run:()=>{if(cash<18){showToast('Not enough cash for the meal.');return;}cash-=18;polloState='preparing';polloDeadline=Date.now()+9000;showToast('Order placed · number 24. Please wait for the pickup light.');saveGame();updateHUD();}},
+   {label:'Family meal · $32',run:()=>{if(cash<32){showToast('Not enough cash for the family meal.');return;}cash-=32;polloState='preparing';polloDeadline=Date.now()+12000;showToast('Family meal ordered · number 25.');saveGame();updateHUD();}},
+   {label:'Maybe later',run:()=>{}}
+  ]);else showToast('You already have an order in progress. Collect it at the pickup counter.');return;
+ }else if(target.type==='pollo-pickup'){
+  if(polloState==='preparing'&&Date.now()>=polloDeadline){polloState='ready';saveGame();}
+  if(polloState==='ready'){polloState='carried';showToast('Order collected. Take the tray to the window booth marked by the gold ring.');saveGame();}
+  else if(polloState==='preparing')showToast('Your order is still being prepared · '+Math.ceil((polloDeadline-Date.now())/1000)+' sec.');
+  else showToast('No order is waiting at the pickup counter.');return;
+ }else if(target.type==='pollo-table'){
+  if(polloState==='carried'){polloState='served';cash+=45;showToast('Table served · shift bonus +$45.');saveGame();updateHUD();}
+  else showToast('The table is ready for its order. Pick up a tray first.');return;
+ }else if(target.type==='pollo-staff'){
+  openDialogue('LOS POLLOS EMPLOYEE','Welcome in. The lunch rush is steady today. Gus likes everything neat and on time.',[
+   {label:'Ask how the kitchen is running',run:()=>showToast('“We are right on schedule. Pickup is at the counter.”')},
+   {label:'Ask where to take an order',run:()=>showToast('The booth by the front window has been waiting.')},
+   {label:'Leave',run:()=>{}}
+  ]);return;
  }else if(target.type==='gas-refuel'){
   if(fuel>=100){showToast('The tank is already full.');return;}
   if(cash<300){showToast('Refueling costs $300. You do not have enough cash.');return;}
@@ -1276,6 +1371,14 @@ function updateActive(){
  if(driving){el.classList.add('visible');$('interaction-copy').textContent=' EXIT VEHICLE';}
  else{
   for(const l of locations){const d=player.position.distanceTo(l.pos);if(d<l.range&&d<best){best=d;active=l;}}
+  const polloTargets=[
+   {type:'pollo-gus',label:'SPEAK WITH GUSTAVO FRING',pos:gusNPC.root.position,range:4.9},
+   {type:'pollo-order',label:'PLACE CHICKEN ORDER',pos:new THREE.Vector3(150,0,70),range:3.8},
+   {type:'pollo-pickup',label:'COLLECT ORDER',pos:new THREE.Vector3(159,0,57),range:3.8},
+   {type:'pollo-table',label:'SERVE WINDOW TABLE',pos:new THREE.Vector3(139,0,61),range:3.8},
+   {type:'pollo-staff',label:'TALK TO RESTAURANT STAFF',pos:polloStaffNPC.root.position,range:4.8}
+  ];
+  for(const t of polloTargets){const d=player.position.distanceTo(t.pos);if(d<t.range&&d<best){best=d;active=t;}}
   const rvDistance=player.position.distanceTo(playerCar.position);
 if(cookState==='idle'){
  const next=nextCookStationIndex();
@@ -1303,6 +1406,7 @@ if(cookState==='loaded'){const d=player.position.distanceTo(motelClerkNPC.root.p
  if(player.position.distanceTo(locations[3].pos)<35)zone='GAS STATION';
  if(player.position.distanceTo(locations[4].pos)<24)zone='POLICE PATROL';
  if(player.position.distanceTo(locations[5].pos)<32)zone='ROUTE 66 MOTEL';
+ if(player.position.distanceTo(locations[6].pos)<38)zone='LOS POLLOS DISTRICT';
   if(player.position.distanceTo(new THREE.Vector3(-190,0,165))<62)zone='DESERT COOK SITE';
  $('location').innerHTML=zone+' <span>·</span> ALBUQUERQUE, NM';updateObjectiveDistance();drawMiniMap();
 }
@@ -1331,7 +1435,7 @@ function drawWorldMap(){
  ctx.strokeStyle='#d0b36a';ctx.lineWidth=2;ctx.setLineDash([9,10]);ctx.beginPath();ctx.moveTo(...Object.values(p(-250,0)));ctx.lineTo(...Object.values(p(250,0)));ctx.moveTo(...Object.values(p(100,-4)));ctx.lineTo(...Object.values(p(100,-50)));ctx.moveTo(...Object.values(p(-145,-4)));ctx.lineTo(...Object.values(p(-145,-66)));ctx.stroke();ctx.setLineDash([]);
  const block=(x,z,bw,bd,color)=>{const q=p(x,z);ctx.fillStyle=color;ctx.fillRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);ctx.strokeStyle='rgba(227,211,169,.35)';ctx.lineWidth=1;ctx.strokeRect(q.x-bw*scale/2,q.y-bd*scale/2,bw*scale,bd*scale);};
  [[-30,-38,14,11],[-58,-38,12,10],[8,-44,12,10],[42,-42,14,11],[-70,38,11,9],[70,42,14,10]].forEach(v=>block(v[0],v[1],v[2],v[3],'#887f6e'));
- block(36,28,30,19,'#b6a589');block(-82,22,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,24,21,14,'#b9a77d');block(-145,-76,57,14,'#b9ad91');
+ block(36,28,30,19,'#b6a589');block(-82,22,25,16,'#d2c8b8');block(100,-70,39,31,'#4d5651');block(78,24,21,14,'#b9a77d');block(-145,-76,57,14,'#b9ad91');block(150,65,35,23,'#b9a77d');
  ctx.font='bold 12px monospace';ctx.textAlign='left';
  const occupied=[];
  for(const l of locations){
@@ -1485,6 +1589,7 @@ function animate(){
  uiRefreshClock+=dt;
  if(!dialogOpen&&!mapOpen){
   crashCooldown=Math.max(0,crashCooldown-dt);
+  if(polloState==='preparing'&&Date.now()>=polloDeadline){polloState='ready';showToast('Order 24 is ready at the Los Pollos pickup counter.');saveGame();}
   if(cookState==='cooking'&&!driving&&player.position.distanceTo(cookWorkPos)<7.5){
    cookProgress=Math.min(1,cookProgress+dt/10);
    const bar=document.querySelector('.objective-progress i');if(bar)bar.style.width=Math.round(cookProgress*70)+'%';
