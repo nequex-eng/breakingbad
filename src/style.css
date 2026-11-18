@@ -61,3 +61,16 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;overscroll-behavior:no
 
 /* RV side-story interaction: restrained, readable game HUD. */
 .rv-story-note{color:#d7d0bc}
+
+
+/* Touch-first tablets (including iPad in desktop-sized Safari) use the on-screen joystick. */
+html.touch-device .mobile-controls{display:block}
+html.touch-device .controls{display:none}
+html.touch-device .mobile-joystick{touch-action:none;-webkit-user-select:none;user-select:none}
+html.touch-device .mobile-interact{touch-action:none}
+@media(min-width:701px){
+ html.touch-device .mobile-joystick{left:28px;bottom:28px;width:156px;height:156px}
+ html.touch-device .mobile-joystick .joystick-ring{width:136px;height:136px}
+ html.touch-device .mobile-joystick .joystick-knob{width:58px;height:58px}
+ html.touch-device .mobile-controls .mobile-interact{right:34px;bottom:38px;width:76px;height:76px}
+}
