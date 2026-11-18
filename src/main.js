@@ -277,15 +277,17 @@ const trafficCars=[
 ];
 let driving=false,driveSpeed=0,crashCooldown=0,fuel=100;
 const movingVehicleRoots=trafficCars.map(t=>t.root);
-const vehicleBlockers=[
- {x:-30,z:-38,halfX:6.9,halfZ:5.18},{x:-58,z:-38,halfX:6,halfZ:4.5},
- {x:8,z:-44,halfX:6,halfZ:4.5},{x:42,z:-42,halfX:6.6,halfZ:4.95},
- {x:-70,z:38,halfX:5.4,halfZ:4.05},{x:70,z:42,halfX:6.6,halfZ:4.95},
- {x:36,z:28,halfX:14.5,halfZ:9},{x:-82,z:22,halfX:12,halfZ:7.5},
- {x:100,z:-70,halfX:19,halfZ:15},{x:78,z:24,halfX:10,halfZ:6.5},
- {x:-145,z:-76,halfX:28,halfZ:6.5},
- {x:73,z:35,halfX:.8,halfZ:.8},{x:78,z:35,halfX:.8,halfZ:.8},{x:83,z:35,halfX:.8,halfZ:.8}
+const buildingBlockers=[
+ // One authoritative footprint per building; vehicle and pedestrian systems share this registry.
+ {x:-30,z:-38,halfX:6.9,halfZ:5.18,pedX:8.2,pedZ:6.5},{x:-58,z:-38,halfX:6,halfZ:4.5,pedX:7.5,pedZ:6},
+ {x:8,z:-44,halfX:6,halfZ:4.5,pedX:7.5,pedZ:6},{x:42,z:-42,halfX:6.6,halfZ:4.95,pedX:8,pedZ:6.5},
+ {x:-70,z:38,halfX:5.4,halfZ:4.05,pedX:7,pedZ:5.5},{x:70,z:42,halfX:6.6,halfZ:4.95,pedX:8,pedZ:6.5},
+ {x:36,z:28,halfX:14.5,halfZ:9,pedX:15.5,pedZ:9.7},{x:-82,z:22,halfX:12,halfZ:7.5,pedX:13,pedZ:8.5},
+ {x:100,z:-70,halfX:19,halfZ:15,pedX:20,pedZ:16},{x:78,z:24,halfX:10,halfZ:6.5,pedX:10,pedZ:7},
+ {x:-145,z:-76,halfX:28,halfZ:6.5,pedX:28.5,pedZ:7.5}
 ];
+const vehicleBlockers=buildingBlockers.map(({x,z,halfX,halfZ})=>({x,z,halfX,halfZ}));
+vehicleBlockers.push({x:73,z:35,halfX:.8,halfZ:.8},{x:78,z:35,halfX:.8,halfZ:.8},{x:83,z:35,halfX:.8,halfZ:.8});
 function addParkedCarBlocker(x,z,rotation){
  const c=Math.abs(Math.cos(rotation)),s=Math.abs(Math.sin(rotation));
  vehicleBlockers.push({x,z,halfX:1.45*c+2.65*s,halfZ:1.45*s+2.65*c});
@@ -332,8 +334,8 @@ function separatePedestriansFromAllVehicles(){
    let nx=lx-px,nz=lz-pz,len=Math.hypot(nx,nz);
    if(len<.001){nx=1;nz=0;len=1;}
    const push=.86/len,outX=lx+nx*push,outZ=lz+nz*push;
-   npc.root.position.x=vehicle.position.x+outX*c+outZ*s;
-   npc.root.position.z=vehicle.position.z-outX*s+outZ*c;
+   const candidateX=vehicle.position.x+outX*c+outZ*s,candidateZ=vehicle.position.z-outX*s+outZ*c;
+   if(!pedestrianBlockedByWorld(candidateX,candidateZ)){npc.root.position.x=candidateX;npc.root.position.z=candidateZ;}
   }
  }
 }
@@ -644,12 +646,10 @@ function updateObjectiveDistance(){
 const keys={};
 let clickMovePath=[];
 const walkObstacles=[
- // Houses: footprint plus a pedestrian clearance margin.
- [-30,-38,8.2,6.5],[-58,-38,7.5,6],[8,-44,7.5,6],[42,-42,8,6.5],[-70,38,7,5.5],[70,42,8,6.5],
- // Main landmarks: car wash, diner, warehouse, gas station and motel.
- [36,28,15.5,9.7],[-82,22,13,8.5],[100,-70,20,16],[78,24,10,7],[-145,-76,28.5,7.5],
- // Parked cars and fixed roadside fixtures.
- [19,15,2,3.1],[-93,19,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5]
+ ...buildingBlockers.map(b=>[b.x,b.z,b.pedX,b.pedZ]),
+ // Parked vehicles and fixed roadside fixtures.
+ [19,15,2,3.1],[-104,35,2,3.1],[51,-20,2,3.1],[-6,8,2.2,3.5],[98,23,2,3.5],
+ [73,35,1.25,1.25],[78,35,1.25,1.25],[83,35,1.25,1.25]
 ];
 function buildClickMovePath(destination){
  const step=5,size=97,min=-240,index=(x,z)=>{const gx=Math.max(0,Math.min(size-1,Math.round((x-min)/step))),gz=Math.max(0,Math.min(size-1,Math.round((z-min)/step)));return gz*size+gx;};
